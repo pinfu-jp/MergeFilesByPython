@@ -59,7 +59,7 @@ def extract_timestamp_by_files(out_lines, file_path:str):
 				if extracted:
 					out_lines.append(extracted)
 		except ValueError as e:
-			logger.write_log("error:" + e)
+			logger.write_log("error:" + str(e))
 
 
 # タイムスタンプとログ文字列を分離し、リストに格納
