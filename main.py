@@ -2,7 +2,7 @@
 import csv
 from Logger import DEBUG_LOG_PATH, Logger
 
-from MergeFilesByPython import extract_timestamp_and_write_to_csv
+from MergeFilesByPython import parse_logs_to_csv
 from SelectFolder import select_folder
 
 
@@ -15,7 +15,7 @@ def main():
     output_file_path = log_folder + "\\" + "merdedLog.csv" 
 
     # 複数のログファイルを １本のcsvファイルにまとめる 
-    extract_timestamp_and_write_to_csv(log_folder, output_file_path)
+    parse_logs_to_csv(log_folder, output_file_path)
     
     # ソート後のcsvファイルを読み込み、タイムスタンプ順に出力
     with open(output_file_path, "r") as f:
