@@ -14,12 +14,15 @@ class Logger:
 
     def write_log(self, log_str):
 
+        if (log_str == None):
+            return
+
         print(log_str)
 
         with open(self.file_path, "a") as f:
             f.write(log_str + "\n")
             self.file_size = os.path.getsize(self.file_path)
-            if self.file_size > 1e6:
+            if self.file_size > 1e6:	# 一定量に達したら古いログを行単位で消す
                 f.seek(0)
                 lines = f.readlines()
                 f.seek(0)
