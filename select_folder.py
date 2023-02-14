@@ -1,11 +1,11 @@
 import tkinter as tk
 from tkinter import filedialog
 
-from logger import DEBUG_LOG_PATH, Logger
+from logger import write_log
 
-def select_folder():
+def select_folder() -> str:
 	root = tk.Tk()
 	root.withdraw()
 	folder_path = filedialog.askdirectory()
-	Logger(DEBUG_LOG_PATH).write_log('select_folder path:' + folder_path)
+	write_log('select_folder path:' + folder_path)
 	return folder_path

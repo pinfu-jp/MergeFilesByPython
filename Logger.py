@@ -1,6 +1,19 @@
 import os
+from enum import Enum
+
+class LogLevel(str, Enum):
+    D = "[Debug]"
+    I = "[Info]"
+    W = "[Warning]"
+    E = "[Error]"
 
 DEBUG_LOG_PATH = "debug.log"
+
+# ログ出力　レベル指定可能
+def write_log(log_str:str, level:LogLevel = LogLevel.I, log_path:str = DEBUG_LOG_PATH):
+	if log_str:
+		Logger(log_path).write_log(level.value + " " + log_str)
+
 
 class Logger:
     _instance = None
