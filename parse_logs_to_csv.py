@@ -10,21 +10,25 @@ OUT_SYMBLE_PRE_WORD = '●'
 # 指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力
 def parse_logs_to_csv(log_folder_path, csv_file_path):
 
-    write_log("parse_logs_to_csv() start")
+	write_log("parse_logs_to_csv() start")
 
-    out_lines = []
-    for file_name in os.listdir(log_folder_path):
-        file_path = os.path.join(log_folder_path, file_name)
-        parse_timestamp_by_files(out_lines, file_path)
+	out_lines = []
+	for file_name in os.listdir(log_folder_path):
+		file_path = os.path.join(log_folder_path, file_name)
+		parse_timestamp_by_files(out_lines, file_path)
 
 	# タイムスタンプでソート 
-    out_lines = sorted(out_lines, key=lambda x: x[0])
+	out_lines = sorted(out_lines, key=lambda x: x[0])
+
+	# 最後にヘッダー行を足す
+	header_line = ["タイムスタンプ","ファイル名","ログ内容"]
+	out_lines.insert(0, header_line)
 
 	# csv出力
-    with open(csv_file_path, "w", newline="", encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerows(out_lines)
-        write_log("parse_logs_to_csv() end success")
+	with open(csv_file_path, "w", newline="", encoding='utf-8') as f:
+		writer = csv.writer(f)
+		writer.writerows(out_lines)
+		write_log("parse_logs_to_csv() end success")
 
 #  ファイルからタイムスタンプと文字列を抽出
 def parse_timestamp_by_files(out_lines, file_path:str):
@@ -47,11 +51,9 @@ def parse_timestamp_by_files(out_lines, file_path:str):
 	with open(file_path, "r") as f:
 
 		try:
-			# TODO: CSVにヘッダー行を足したい
-
+			file_name = os.path.basename(file_path)
 			for line in f:
-				# TODO: ファイル名も指定してcSVの２列目に出力したい
-				extracted = parse_timestamp(line)
+				extracted = parse_timestamp(line, file_name)
 				if extracted:
 					out_lines.append(extracted)
 		except ValueError as e:
@@ -64,8 +66,8 @@ def parse_timestamp_by_files(out_lines, file_path:str):
 # 日付と時刻の間は半角スペース
 TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}')
 
-# タイムスタンプとログ文字列を分離し、リストに格納
-def parse_timestamp(log_line):
+# タイムスタンプとログ文字列を分離し、リストに格納  ファイル名も出力
+def parse_timestamp(log_line, file_name):
 	match = TIMESTAMP_PATTERN.search(log_line)
 	if match:
 		timestamp_str = match.group()
@@ -77,7 +79,7 @@ def parse_timestamp(log_line):
 		log_string_utf8 = ecode_to_utf8(log_string)
 
 		write_log("timestamp:" + timestamp.strftime("%Y-%m-%d %H:%M:%S") + ", log_string_utf8:" + log_string_utf8, LogLevel.D)
-		return [timestamp, log_string_utf8]
+		return [timestamp, file_name, log_string_utf8]
 	else:
 		return None
 

@@ -18,7 +18,7 @@ def main():
 			show_message("ログフォルダが指定されませんでした")		
 			return
 
-		csv_path = log_folder + "\\" + "merdedLog.csv" 
+		csv_path = log_folder + "\\" + "parsed_log.csv" 
 
 		# 複数のログファイルを １本のcsvファイルにまとめる 
 		parse_logs_to_csv(log_folder, csv_path)
