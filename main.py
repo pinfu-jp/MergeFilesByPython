@@ -18,13 +18,13 @@ def main():
 			show_message("ログフォルダが指定されませんでした")		
 			return
 
-		csv_path = log_folder + "\\" + "parsed_log.csv" 
+		out_dir = log_folder 
 
 		# 複数のログファイルを １本のcsvファイルにまとめる 
-		parse_logs_to_csv(log_folder, csv_path)
+		parse_logs_to_csv(log_folder, out_dir)
 
 		# CSVファイルを開く
-		open_csv(csv_path)
+		open_csv(out_dir)
 
 	except Exception as e:
 		write_log("例外発生 e:" + str(e), LogLevel.E)

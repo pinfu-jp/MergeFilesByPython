@@ -19,29 +19,30 @@ class TestMergeFilesByPython(unittest.TestCase):
 		test_log_file = directory + '/' + 'test.log'
 		test2_log_file = directory + '/' + 'test2.log'
 		test3_log_file = directory + '/' + 'test3.log'
-		test_csv_file = directory + '/' + 'test_output.csv'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
-			f.write('2022/12/31 14:51:11 log message1\n')
 			f.write('2023-12-31 14:51:12 ハイフンログ\n')
+			f.write('2023.02.15 14:51:12 ドットログ\n')
 			f.write('2022/12/31 14:51:12 log message2\n')
-			f.write('2023.01.11 14:51:12 ドットログ\n')
+			f.write('2022/12/31 14:51:11 log message1\n')
 
 		with open(test2_log_file, 'w') as f:
-			f.write('2022/10/10 09:51:11 test2 log message1\n')
 			f.write('2021-11-11 14:51:12 test2 ハイフンログ\n')
+			f.write('2022/10/10 09:51:11 test2 log message1\n')
 			f.write('[2022/12/31 14:51:13] test2 log message2\n')
-			f.write('2023.01.11 14:51:11 test2 2023.01.11 ドットログ\n')
+			f.write('2023.02.15 14:51:11 test2 2023.01.11 ドットログ\n')
 
 		with open(test3_log_file, 'w') as f:
-			f.write('22/01/10 09:51:11 test3 log message1\n')
 			f.write('21-01-11 14:51:12 test3 ハイフンログ\n')
+			f.write('22/01/10 09:51:11 test3 log message1\n')
 			f.write('[22/01/31 14:51:13] test3 log message2\n')
-			f.write('23.02.11 14:51:11 test3 2023.01.11 ドットログ\n')
+			f.write('23.02.13 14:51:11 test3 2023.01.11 ドットログ\n')
+			f.write('23.02.14 14:51:11 test3 2023.01.11 ドットログ\n')
+			f.write('23.02.15 14:51:11 test3 2023.01.11 ドットログ\n')
 
 		# extract_timestamp_and_write_to_csv を実行
-		parse_logs_to_csv(directory, test_csv_file)
+		parse_logs_to_csv(directory, directory)
 
 		# 生成されたcsvファイルが期待通りか確認
 		# with open('test_output.csv', 'r') as f:
