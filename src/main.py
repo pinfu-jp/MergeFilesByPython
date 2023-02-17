@@ -6,6 +6,7 @@ from messagebox import show_message
 from logger import write_log, LogLevel
 
 
+
 # メイン処理
 def main():
 
