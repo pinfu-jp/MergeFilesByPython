@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 
-from logger import write_log
+from src.logger import write_log
 
 def select_folder() -> str:
 	root = tk.Tk()

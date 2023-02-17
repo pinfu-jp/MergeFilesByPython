@@ -1,7 +1,7 @@
 import os
 import pywintypes
 
-from logger import write_log, LogLevel
+from src.logger import write_log, LogLevel
 
 def open_csv(csv_path):
 	# Logger.write_log("open_csv csv_path:" + csv_path)

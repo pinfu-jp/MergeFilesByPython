@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 
-from logger import write_log, LogLevel
+from src.logger import write_log, LogLevel
 
 TITLE = 'ParseLogs'
 
