@@ -2,16 +2,12 @@ import unittest
 import os
 import shutil
 
-from module.parse_logs_to_csv import parse_logs_to_csv
+from module.parse_logs_to_csv import parse_logs_to_csv, parse_logs_by_json
 
 class TestMergeFilesByPython(unittest.TestCase):
 
-	def test_sys_path(self):
-		import sys; print(sys.path)
+	def _prepare_log_test(self, directory):
 
-	def test_extract_timestamp_and_write_to_csv(self):
-
-		directory = "./test_directory"
 		if os.path.exists(directory):
 			shutil.rmtree(directory)
 		os.mkdir(directory)
@@ -51,8 +47,24 @@ class TestMergeFilesByPython(unittest.TestCase):
 			f.write('21:51:12 test4 ハイフンログ\n')
 			f.write('22:51:11 test4 log message1\n')
 
+		return test_log_file, test2_log_file, test3_log_file, test4_log_file, test5_log_file
+
+
+	def test_sys_path(self):
+		import sys; print(sys.path)
+
+	def test_parse_logs_by_json(self):
+		json = "./ParseLogs.json"
+		parse_logs_by_json(json)
+
+
+	def test_parse_logs_to_csv(self):
+
+		directory = "./test_directory"
+		self._prepare_log_test(directory)
+
 		# extract_timestamp_and_write_to_csv を実行
-		parse_logs_to_csv(directory, directory)
+		parse_logs_to_csv(directory, directory, 20230216)
 
 		# 生成されたcsvファイルが期待通りか確認
 		# with open('test_output.csv', 'r') as f:
@@ -65,6 +77,8 @@ class TestMergeFilesByPython(unittest.TestCase):
 		# テスト後に作成したファイルを削除
 		# os.remove(test_log_file)
 		# os.remove(test_csv_file)
+
+
 
 if __name__ == '__main__':
     unittest.main()

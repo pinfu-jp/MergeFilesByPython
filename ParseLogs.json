@@ -1,0 +1,6 @@
+{
+    "log_folder_path": "C:\\dev\\github\\MergeFilesByPython\\test_directory",
+    "csv_folder_path": "C:\\dev\\github\\MergeFilesByPython\\out_directory",
+    "target_yyyymmdd": 20230215,
+    "go_back_days": 5
+}

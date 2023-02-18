@@ -9,8 +9,8 @@ class LogLevel(str, Enum):
 
 DEBUG_LOG_PATH = "debug.log"
 
-# ログ出力　レベル指定可能
 def write_log(log_str:str, level:LogLevel = LogLevel.I, log_path:str = DEBUG_LOG_PATH):
+	""" ログ出力　レベル、パス指定可能"""
 	if log_str:
 		Logger(log_path).write_log(log_str, level)
 

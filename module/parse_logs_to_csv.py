@@ -1,9 +1,11 @@
 import os
 import re
 import csv
+import json
 
 from datetime import datetime, timedelta
 from typing import Optional
+from enum import Enum
 
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 
@@ -11,18 +13,43 @@ OUT_SYMBLE_PRE_WORD = '●'
 OUT_CSV_NAME = OUT_SYMBLE_PRE_WORD + 'parsed_log'
 
 
-def parse_logs_to_csv(log_folder_path, csv_folder_path, go_back_day_count = 5):
+class JSON_KEY(Enum):
+	"""JSONファイルのキー定義"""
+
+	log_folder = 'log_folder_path'
+	csv_folder = 'csv_folder_path'
+	target_ymd = 'target_yyyymmdd'
+	go_back_days = 'go_back_days'
+	debug_path = 'debug_path'
+
+
+def parse_logs_by_json(json_path):
+	"""JSON設定に従ったログ解析"""
+
+	with open(json_path, 'r') as f:
+		json_data = json.load(f)
+
+	parse_logs_to_csv(
+		json_data[JSON_KEY.log_folder.value],
+		json_data[JSON_KEY.csv_folder.value],
+		json_data[JSON_KEY.target_ymd.value],
+		json_data[JSON_KEY.go_back_days.value]
+		)
+
+	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
+
+
+def parse_logs_to_csv(log_folder_path:str, csv_folder_path:str, target_yyyymmdd:int, go_back_day_count:int = 5):
 	"""指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力"""
 
-	write_log("parse_logs_to_csv() start go_back_day_count:" + str(go_back_day_count))
+	write_log("parse_logs_to_csv() start target_yyyymmdd:" + str(target_yyyymmdd))
 
-	# 本日から1日ずつ遡って処理するループ
-	today = datetime.now().date()
-	for i in range(0, go_back_day_count): # 今日から10日前までを処理する
-		target_date = today - timedelta(days=i)
+	# 対象日から1日ずつ遡って処理するループ
+	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
+	for i in range(0, go_back_day_count):
+		target_date = target_day - timedelta(days=i)
 		csv_path = make_csv_path(csv_folder_path, target_date)
 		parse_one_day_logs_to_csv(log_folder_path, target_date, csv_path)
-
 
 def parse_one_day_logs_to_csv(log_folder_path, target_date:datetime, csv_file_path):
 	"""指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力"""
@@ -40,6 +67,9 @@ def parse_one_day_logs_to_csv(log_folder_path, target_date:datetime, csv_file_pa
 	# 最後にヘッダー行を足す
 	header_line = ["タイムスタンプ","ファイル名","ログ内容"]
 	out_lines.insert(0, header_line)
+
+	# 親フォルダが存在しない場合にフォルダを再帰的に作成する
+	os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
 
 	# csv出力
 	with open(csv_file_path, "w", newline="", encoding='utf-8') as f:
@@ -73,7 +103,7 @@ def parse_timestamp_by_files(out_lines, file_path:str, target_date:datetime):
 			file_name = os.path.basename(file_path)
 
 			# ファイル名で対象外が判明している場合は処理しない
-			file_timestamp = parse_timestamp_in_file_name(file_name)
+			file_timestamp = get_datetime_by_file_name(file_name)
 			if file_timestamp :
 				if is_target_log(file_timestamp, target_date) == False:
 					write_log("not target date file:" + file_path)
@@ -96,8 +126,8 @@ def parse_timestamp_by_files(out_lines, file_path:str, target_date:datetime):
 			write_log("error:" + str(e), LogLevel.E)
 
 
-def parse_timestamp_in_file_name(file_name) -> datetime:
-	"""ファイル名からyyyymmdd形式の日付を取り出す"""
+def get_datetime_by_file_name(file_name) -> datetime:
+	"""ファイル名のyyyymmdd形式文字から日付を取り出す"""
 	match = re.search(r'\d{8}', file_name)
 	if match:
 		return datetime.strptime(match.group(), '%Y%m%d')

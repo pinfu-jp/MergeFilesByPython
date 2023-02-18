@@ -6,6 +6,7 @@ from module.logger import write_log, LogLevel
 TITLE = 'ParseLogs'
 
 def show_message(message: str):
+	"""メッセージボックスを表示"""
+
 	write_log(TITLE + " " + message)
-	# メッセージボックスを表示
 	messagebox.showinfo(TITLE, message)		
