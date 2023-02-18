@@ -19,6 +19,8 @@ class TestMergeFilesByPython(unittest.TestCase):
 		test_log_file = directory + '/' + 'test.log'
 		test2_log_file = directory + '/' + 'test2.log'
 		test3_log_file = directory + '/' + 'test3.log'
+		test4_log_file = directory + '/' + 'test4_20230215.log'
+		test5_log_file = directory + '/' + 'test5_20240215.log'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
@@ -40,6 +42,14 @@ class TestMergeFilesByPython(unittest.TestCase):
 			f.write('23.02.13 14:51:11 test3 2023.01.11 ドットログ\n')
 			f.write('23.02.14 14:51:11 test3 2023.01.11 ドットログ\n')
 			f.write('23.02.15 14:51:11 test3 2023.01.11 ドットログ\n')
+
+		with open(test4_log_file, 'w') as f:
+			f.write('21:51:12 test4 ハイフンログ\n')
+			f.write('22:51:11 test4 log message1\n')
+
+		with open(test5_log_file, 'w') as f:
+			f.write('21:51:12 test4 ハイフンログ\n')
+			f.write('22:51:11 test4 log message1\n')
 
 		# extract_timestamp_and_write_to_csv を実行
 		parse_logs_to_csv(directory, directory)

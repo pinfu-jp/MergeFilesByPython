@@ -68,9 +68,17 @@ def parse_timestamp_by_files(out_lines, file_path:str, target_date:datetime):
 		try:
 			target_count = 0
 			file_name = os.path.basename(file_path)
+
+			# ファイル名で対象外が判明している場合は処理しない
+			file_timestamp = parse_timestamp_in_file_name(file_name)
+			if file_timestamp :
+				if is_target_log(file_timestamp, target_date) == False:
+					write_log("not target date file:" + file_path)
+					return
+
 			for line in f:
 				# 行解析
-				parsed = parse_timestamp(line, file_name)
+				parsed = parse_timestamp(line, file_name, file_timestamp)
 				# 対象日なら出力
 				if is_target_log(parsed[0], target_date):
 					out_lines.append(parsed)
@@ -85,14 +93,22 @@ def parse_timestamp_by_files(out_lines, file_path:str, target_date:datetime):
 			write_log("error:" + str(e), LogLevel.E)
 
 
+def parse_timestamp_in_file_name(file_name) -> datetime:
+	# ファイル名からyyyymmdd形式の日付を取り出す
+	match = re.search(r'\d{8}', file_name)
+	if match:
+		return datetime.strptime(match.group(), '%Y%m%d')
+	else:
+		return None
+
 # 正規表現によるタイムスタンプの抽出
 # 日付：YYYY.MM.DD  YYYY-MM-DD  YYYY/MM/DD  yy.MM.DD  yy-MM-DD  yy/MM/DD に対応
 # 時刻：hh:mm:ss に対応
 # 日付と時刻の間は半角スペース
 TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}')
 
-# タイムスタンプとログ文字列を分離し、リストに格納  ファイル名も出力
-def parse_timestamp(log_line, file_name) :
+# タイムスタンプの時刻とログ文字列を分離し、リストに格納  ファイル名も出力
+def parse_time(log_line, file_name) :
 	match = TIMESTAMP_PATTERN.search(log_line)
 	if match:
 		timestamp_str = match.group()
@@ -108,6 +124,49 @@ def parse_timestamp(log_line, file_name) :
 	else:
 		return None
 
+
+
+# 正規表現によるタイムスタンプの抽出
+# 日付：YYYY.MM.DD  YYYY-MM-DD  YYYY/MM/DD  yy.MM.DD  yy-MM-DD  yy/MM/DD に対応
+# 時刻：hh:mm:ss に対応
+# 日付と時刻の間は半角スペース
+TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}')
+
+TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}')
+
+
+# タイムスタンプとログ文字列を分離し、リストに格納  ファイル名も出力
+def parse_timestamp(log_line, file_name, file_timestamp) :
+
+	if file_timestamp:	# ファイル名に日付が付いているケース
+		match = TIMESTAMP_TIME_PATTERN.search(log_line)
+		if match:
+			time_str = match.group()
+			log_string = log_line.replace(time_str, "").strip()
+
+			# dateime型 
+			timestamp = combine_time_str_to_datetime(file_timestamp, time_str)
+			# UTF8 文字列にする
+			log_string_utf8 = ecode_to_utf8(log_string)
+		else:
+			return None
+
+	else:	# ファイル名に日付は付いていないケース
+		match = TIMESTAMP_PATTERN.search(log_line)
+		if match:
+			timestamp_str = match.group()
+			log_string = log_line.replace(timestamp_str, "").strip()
+
+			# dateime型 
+			timestamp = datetime_by_text(timestamp_str)
+			# UTF8 文字列にする
+			log_string_utf8 = ecode_to_utf8(log_string)
+		else:
+			return None
+
+	write_log("timestamp:" + timestamp.strftime("%Y-%m-%d %H:%M:%S") + ", log_string_utf8:" + log_string_utf8, LogLevel.D)
+	return [timestamp, file_name, log_string_utf8]
+
 # タイムスタンプ文字列を datetime 型に変換
 def datetime_by_text(timestamp_str) -> datetime:
 
@@ -122,11 +181,27 @@ def datetime_by_text(timestamp_str) -> datetime:
 		else:
 			timestamp = datetime.strptime(timestamp_str, '%Y%m%d%H%M%S')
 
+		return timestamp
+
 	except ValueError as e:
 		write_log("datetime_by_text error:" + str(e), LogLevel.E)
 		return None
 
-	return timestamp
+
+# タイムスタンプ文字列を datetime 型に変換
+def combine_time_str_to_datetime(datetime, time_str) -> datetime:
+
+	try:
+		# datetime型に変換
+		tm = datetime.strptime(time_str, '%H:%M:%S').time()
+		return datetime.combine(datetime, tm)
+
+	except ValueError as e:
+		write_log("combine_time_str_to_datetime error:" + str(e), LogLevel.E)
+		return None
+
+
+
 
 # 文字列をUTF8にエンコード
 def ecode_to_utf8(some_string):
@@ -142,10 +217,16 @@ def ecode_to_utf8(some_string):
 # 対象日付か
 def is_target_log(timestamp:datetime, target_date:datetime):
 
-	if timestamp.year == target_date.year and timestamp.month == target_date.month and timestamp.day == target_date.day:
-		return True
-	else:
+	if (timestamp.year != target_date.year):
 		return False
+
+	if (timestamp.month != target_date.month):
+		return False
+
+	if (timestamp.day != target_date.day):
+		return False
+
+	return True
 
 # CSVファイルパスを作成
 def make_csv_path(csv_folder_path:str, target_date:datetime):
