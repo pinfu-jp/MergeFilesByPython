@@ -2,7 +2,7 @@ import unittest
 import os
 import shutil
 
-from src.parse_logs_to_csv import parse_logs_to_csv
+from module.parse_logs_to_csv import parse_logs_to_csv
 
 class TestMergeFilesByPython(unittest.TestCase):
 

@@ -4,7 +4,7 @@ import csv
 
 from datetime import datetime, timedelta
 
-from src.logger import write_log, LogLevel, DEBUG_LOG_PATH
+from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 
 OUT_SYMBLE_PRE_WORD = '●'
 OUT_CSV_NAME = OUT_SYMBLE_PRE_WORD + 'parsed_log'

@@ -1,13 +1,10 @@
 import sys
 
-from src.parse_logs_to_csv import parse_logs_to_csv
-from src.select_folder import select_folder
-from src.open_csv import open_csv
-from src.messagebox import show_message
-from src.logger import write_log, LogLevel
-
-
-# python main.py C:\Users\username\log_folder C:\Users\username\csv_folder 
+from module.parse_logs_to_csv import parse_logs_to_csv
+from module.select_folder import select_folder
+from module.open_csv import open_csv
+from module.messagebox import show_message
+from module.logger import write_log, LogLevel
 
 
 # メイン処理

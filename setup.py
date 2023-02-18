@@ -3,13 +3,13 @@ from cx_Freeze import setup, Executable
 
 
 # ビルドに含めるパッケージとモジュールを指定
-packages = ['src']
+packages = ['module']
 includes = []
 excludes = []
 
 # 実行ファイルの設定
 exe = Executable(
-    script='src/main.py',  # 実行ファイルとなるスクリプト
+    script='main.py',  # 実行ファイルとなるスクリプト
     targetName='ParseLogs.exe',  # 出力ファイル名
     base=None  # コンソールアプリケーションとしてビルド
 )
