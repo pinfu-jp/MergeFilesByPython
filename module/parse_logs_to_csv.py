@@ -76,9 +76,16 @@ def parse_one_day_logs_to_csv(log_folder_path, target_date:datetime, csv_file_pa
 		writer = csv.writer(f)
 
 		for line in out_lines:
-			writer.writerow(line)
+			for i, val in enumerate(line):
+				if isinstance(line[i], datetime):
+					text = line[i].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]	# マイクロ秒 → ミリ秒変換あり
+					line[i] = text	# 出力用文字列に置換
 
-		# writer.writerows(out_lines)
+				# writer.writerow([line[i]])
+
+			# writer.writerow(line)
+
+		writer.writerows(out_lines)
 		write_log("parse_logs_to_csv() end success")
 
 
@@ -180,7 +187,7 @@ def datetime_by_text(timestamp_str:str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""
 
 	try:
-		is_year_short = not timestamp_str[:4].isdigit()
+		is_year_short = not timestamp_str[:4].isdigit()		# 2桁西暦対応
 		datetime_length = 14 if not is_year_short else 12 
 
 		# 区切り文字を全て取り除く
@@ -193,7 +200,7 @@ def datetime_by_text(timestamp_str:str) -> datetime:
 			timestamp = datetime.strptime(timestamp_str[:datetime_length], '%Y%m%d%H%M%S')
 
 		# ミリ秒を加算
-		timestamp = __add_micro_sec_ifneed(timestamp, timestamp_str, datetime_length)
+		timestamp = __add_milli_sec_ifneed(timestamp, timestamp_str, datetime_length)
 
 		return timestamp
 
@@ -216,7 +223,7 @@ def combine_time_str_to_datetime(datetime, time_str) -> datetime:
 		timestamp = datetime.combine(datetime, tm)
 
 		# ミリ秒を加算
-		timestamp = __add_micro_sec_ifneed(timestamp, timestamp_str, time_length)
+		timestamp = __add_milli_sec_ifneed(timestamp, timestamp_str, time_length)
 
 		return timestamp
 
@@ -224,14 +231,16 @@ def combine_time_str_to_datetime(datetime, time_str) -> datetime:
 		write_log("combine_time_str_to_datetime error:" + str(e), LogLevel.E)
 		return None
 
-def __add_micro_sec_ifneed(datetime:datetime, timestamp_str, micro_sec_pos) -> datetime:
+def __add_milli_sec_ifneed(datetime:datetime, timestamp_str, milli_sec_pos) -> datetime:
 	"""必要に応じてミリ秒を加算する"""
 
-	if (len(timestamp_str) > micro_sec_pos):
-		micro_sec_str = timestamp_str[micro_sec_pos:]
-		expo = 3 - len(micro_sec_str)	# べき乗値
-		ms = int(micro_sec_str) * (10 ** max(0, min(expo, 3)))
-		datetime = datetime.replace(microsecond=ms)
+	MICRO_SEC_DIGIT = 6	# マイクロ秒で加算することに注意
+
+	if (len(timestamp_str) > milli_sec_pos):
+		micro_sec_str = timestamp_str[milli_sec_pos:]
+		expo = MICRO_SEC_DIGIT - len(micro_sec_str)	# べき乗値
+		micro_sec_value = int(micro_sec_str) * (10 ** max(0, min(expo, MICRO_SEC_DIGIT)))
+		datetime = datetime.replace(microsecond=micro_sec_value)
 
 	return datetime
 
