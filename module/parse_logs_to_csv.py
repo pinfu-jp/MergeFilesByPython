@@ -1,6 +1,6 @@
 import os
 import re
-import csv
+import csv	
 import json
 
 from datetime import datetime, timedelta
@@ -74,7 +74,11 @@ def parse_one_day_logs_to_csv(log_folder_path, target_date:datetime, csv_file_pa
 	# csv出力
 	with open(csv_file_path, "w", newline="", encoding='utf-8') as f:
 		writer = csv.writer(f)
-		writer.writerows(out_lines)
+
+		for line in out_lines:
+			writer.writerow(line)
+
+		# writer.writerows(out_lines)
 		write_log("parse_logs_to_csv() end success")
 
 
@@ -138,39 +142,14 @@ def get_datetime_by_file_name(file_name) -> datetime:
 # 日付：YYYY.MM.DD  YYYY-MM-DD  YYYY/MM/DD  yy.MM.DD  yy-MM-DD  yy/MM/DD に対応
 # 時刻：hh:mm:ss に対応
 # 日付と時刻の間は半角スペース
-TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}')
-
-def parse_time(log_line, file_name) :
-	"""タイムスタンプの時刻とログ文字列を分離し、リストに格納  ファイル名も出力"""
-
-	match = TIMESTAMP_PATTERN.search(log_line)
-	if match:
-		timestamp_str = match.group()
-		log_string = log_line.replace(timestamp_str, "").strip()
-
-		# dateime型 
-		timestamp = datetime_by_text(timestamp_str)
-		# UTF8 文字列にする
-		log_string_utf8 = encode_to_utf8(log_string)
-
-		write_log("timestamp:" + timestamp.strftime("%Y-%m-%d %H:%M:%S") + ", log_string_utf8:" + log_string_utf8, LogLevel.D)
-		return [timestamp, file_name, log_string_utf8]
-	else:
-		return None
-
-
-
-# 正規表現によるタイムスタンプの抽出
-# 日付：YYYY.MM.DD  YYYY-MM-DD  YYYY/MM/DD  yy.MM.DD  yy-MM-DD  yy/MM/DD に対応
-# 時刻：hh:mm:ss に対応
-# 日付と時刻の間は半角スペース
-TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}')
-
-TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}')
+TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
+TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 
 
 def parse_timestamp(log_line: str, file_name: str, file_timestamp: Optional[datetime]):
 	"""タイムスタンプとログ文字列を分離し、リストに格納"""
+
+	write_log(f"parse_timestamp start log_line: {log_line}, file_name: {file_name}", LogLevel.D)
 
 	# 引数チェック
 	if not log_line or not file_name:
@@ -194,22 +173,27 @@ def parse_timestamp(log_line: str, file_name: str, file_timestamp: Optional[date
 	log_string = log_line.replace(match.group(), "").strip()
 	log_string_utf8 = encode_to_utf8(log_string)
 
-	write_log(f"timestamp: {timestamp}, log_string_utf8: {log_string_utf8}", LogLevel.D)
+	write_log(f"parse_timestamp end timestamp: {timestamp}, log_string_utf8: {log_string_utf8}", LogLevel.D)
 	return [timestamp, file_name, log_string_utf8]
 
-def datetime_by_text(timestamp_str) -> datetime:
+def datetime_by_text(timestamp_str:str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""
 
 	try:
-		isYearShort = not timestamp_str[:4].isdigit()
+		is_year_short = not timestamp_str[:4].isdigit()
+		datetime_length = 14 if not is_year_short else 12 
+
 		# 区切り文字を全て取り除く
 		timestamp_str = timestamp_str.replace('/', '').replace('-', '').replace(':', '').replace('.', '').replace(' ', '')
 
 		# datetimeオブジェクトを作成
-		if isYearShort:
-			timestamp = datetime.strptime(timestamp_str, '%y%m%d%H%M%S')
+		if is_year_short:
+			timestamp = datetime.strptime(timestamp_str[:datetime_length], '%y%m%d%H%M%S')
 		else:
-			timestamp = datetime.strptime(timestamp_str, '%Y%m%d%H%M%S')
+			timestamp = datetime.strptime(timestamp_str[:datetime_length], '%Y%m%d%H%M%S')
+
+		# ミリ秒を加算
+		timestamp = __add_micro_sec_ifneed(timestamp, timestamp_str, datetime_length)
 
 		return timestamp
 
@@ -222,13 +206,34 @@ def combine_time_str_to_datetime(datetime, time_str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""
 
 	try:
+		time_length = 6
+
+		# 区切り文字を全て取り除く
+		timestamp_str = time_str.replace(':', '').replace('.', '')
+
 		# datetime型に変換
-		tm = datetime.strptime(time_str, '%H:%M:%S').time()
-		return datetime.combine(datetime, tm)
+		tm = datetime.strptime(timestamp_str[:time_length], '%H%M%S').time()
+		timestamp = datetime.combine(datetime, tm)
+
+		# ミリ秒を加算
+		timestamp = __add_micro_sec_ifneed(timestamp, timestamp_str, time_length)
+
+		return timestamp
+
 	except ValueError as e:
 		write_log("combine_time_str_to_datetime error:" + str(e), LogLevel.E)
 		return None
 
+def __add_micro_sec_ifneed(datetime:datetime, timestamp_str, micro_sec_pos) -> datetime:
+	"""必要に応じてミリ秒を加算する"""
+
+	if (len(timestamp_str) > micro_sec_pos):
+		micro_sec_str = timestamp_str[micro_sec_pos:]
+		expo = 3 - len(micro_sec_str)	# べき乗値
+		ms = int(micro_sec_str) * (10 ** max(0, min(expo, 3)))
+		datetime = datetime.replace(microsecond=ms)
+
+	return datetime
 
 def encode_to_utf8(some_string):
 	"""文字列をUTF8にエンコード"""
