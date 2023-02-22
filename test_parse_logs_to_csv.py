@@ -4,7 +4,7 @@ import shutil
 import random
 import time
 
-from module.parse_logs_to_csv import parse_logs_to_csv, parse_logs_by_json
+from module.parse_logs_to_csv import parse_logs_by_json
 
 class TestMergeFilesByPython(unittest.TestCase):
 
@@ -15,15 +15,6 @@ class TestMergeFilesByPython(unittest.TestCase):
 	def test_parse_logs_by_json(self):
 		json = "./ParseLogs.json"
 		parse_logs_by_json(json)
-
-
-	# def test_parse_logs_to_csv(self):
-
-	# 	directory = "./test_directory"
-	# 	self.__prepare_log_test(directory)
-
-	# 	# extract_timestamp_and_write_to_csv を実行
-	# 	parse_logs_to_csv(directory, directory, 20230216)
 
 		# テスト後に作成したファイルを削除
 		# os.remove(test_log_file)

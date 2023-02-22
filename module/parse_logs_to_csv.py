@@ -16,6 +16,7 @@ OUT_CSV_NAME = OUT_SYMBLE_PRE_WORD + 'parsed_log'
 
 DEF_GO_BACK_COUNT = 5
 DEF_ERR_TEXT_PATTERN = "err|except|エラー|warn|警告"
+DEF_MAX_CHARACTER_COUNT = 256
 
 class JSON_KEY(Enum):
 	"""JSONファイルのキー定義"""
@@ -25,41 +26,36 @@ class JSON_KEY(Enum):
 	target_ymd = '解析対象日'
 	go_back_days = '遡る日数'
 	grep_keyword = '抽出キーワード（正規表現）'
-	max_words_per_line = '1行当たりの最大文字数'
+	max_words_per_line = '1行当たりの最大出力文字数'
 	debug_path = 'debug_path'
 
 
-def parse_logs_by_json(json_path, multi_thread = True):
+def parse_logs_by_json(json_path):
 	"""JSON設定に従ったログ解析"""
 
 	with open(json_path, mode='r', encoding='utf-8') as f:
 		json_data = json.load(f)
 
-	if multi_thread:
-		parse_logs_to_csv_by_multi_thread(
-			json_data[JSON_KEY.log_folder.value],
-			json_data[JSON_KEY.csv_folder.value],
-			json_data[JSON_KEY.target_ymd.value],
-			json_data[JSON_KEY.go_back_days.value],
-			json_data[JSON_KEY.grep_keyword.value]
-			)
-	else:
-		parse_logs_to_csv(
-			json_data[JSON_KEY.log_folder.value],
-			json_data[JSON_KEY.csv_folder.value],
-			json_data[JSON_KEY.target_ymd.value],
-			json_data[JSON_KEY.go_back_days.value],
-			json_data[JSON_KEY.grep_keyword.value]
-			)
+	__parse_logs_to_csv(
+		json_data[JSON_KEY.log_folder.value],
+		json_data[JSON_KEY.csv_folder.value],
+		json_data[JSON_KEY.target_ymd.value],
+		json_data[JSON_KEY.go_back_days.value],
+		json_data[JSON_KEY.grep_keyword.value],
+		json_data[JSON_KEY.max_words_per_line.value]
+		)
 
 	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
 
 
-def parse_logs_to_csv_by_multi_thread(log_folder_path:str, 
-										csv_folder_path:str, 
-										target_yyyymmdd:int, 
-										go_back_day_count:int = DEF_GO_BACK_COUNT, 
-										grep_keyword:str = DEF_ERR_TEXT_PATTERN):
+# 以下、private 関数
+
+def __parse_logs_to_csv(log_folder_path:str, 
+						csv_folder_path:str, 
+						target_yyyymmdd:int, 
+						go_back_day_count:int = DEF_GO_BACK_COUNT, 
+						grep_keyword:str = DEF_ERR_TEXT_PATTERN,
+						max_character_count:int = DEF_MAX_CHARACTER_COUNT):
 	"""指定されたフォルダ内のログファイルを解析し、対象日付のログをcsvファイルに出力　日付毎にスレッド化"""
 
 	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
@@ -73,6 +69,7 @@ def parse_logs_to_csv_by_multi_thread(log_folder_path:str,
 						 			args=(	log_folder_path,
 											target_date,
 											grep_keyword,
+											max_character_count,
 											csv_path))
 		threads.append(thread)
 
@@ -84,28 +81,10 @@ def parse_logs_to_csv_by_multi_thread(log_folder_path:str,
 		thread.join()
 
 
-def parse_logs_to_csv(	log_folder_path:str, 
-						csv_folder_path:str, 
-						target_yyyymmdd:int, 
-						go_back_day_count:int = DEF_GO_BACK_COUNT, 
-						grep_keyword:str = DEF_ERR_TEXT_PATTERN):
-	"""指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力"""
-
-	write_log("parse_logs_to_csv() start target_yyyymmdd:" + str(target_yyyymmdd))
-
-	# 対象日から1日ずつ遡って処理するループ
-	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
-	for i in range(0, go_back_day_count):
-		target_date = target_day - timedelta(days=i)
-		csv_path = __make_csv_path(csv_folder_path, target_date)
-		__parse_one_day_logs_to_csv(log_folder_path, target_date, grep_keyword, csv_path)
-
-
-# 以下、private 関数
-
 def __parse_one_day_logs_to_csv(log_folder_path:str, 
 								target_date:datetime,
 								grep_keyword:str,
+								max_character_count:int,
 								csv_file_path:str):
 	"""指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力"""
 
@@ -114,7 +93,7 @@ def __parse_one_day_logs_to_csv(log_folder_path:str,
 	out_lines = []
 	for file_name in os.listdir(log_folder_path):
 		file_path = os.path.join(log_folder_path, file_name)
-		__parse_log_data_by_files(out_lines, file_path, target_date, grep_keyword)
+		__parse_log_data_by_files(out_lines, file_path, target_date, grep_keyword, max_character_count)
 
 	# タイムスタンプでソート 
 	out_lines = sorted(out_lines, key=lambda x: x[0])
@@ -141,7 +120,10 @@ def __parse_one_day_logs_to_csv(log_folder_path:str,
 		write_log("parse_logs_to_csv() end success")
 
 
-def __parse_log_data_by_files(out_lines, file_path:str, target_date:datetime, grep_keyword:str):
+def __parse_log_data_by_files(out_lines, file_path:str,
+							  target_date:datetime,
+							  grep_keyword:str,
+							  max_character_count:int):
 	"""ファイルからログデータを解析"""
 
 	write_log("parse_timestamp_by_files() file:" + file_path, LogLevel.D)
@@ -174,14 +156,19 @@ def __parse_log_data_by_files(out_lines, file_path:str, target_date:datetime, gr
 
 			for line in f:
 				# 行解析
-				parsed = __parse_log_line(line, target_date, file_name, grep_keyword, file_timestamp)
+				parsed = __parse_log_line(line,
+										 target_date,
+										 file_name, 
+										 grep_keyword, 
+										 max_character_count, 
+										 file_timestamp)
 				if parsed:
 					out_lines.append(parsed)
 					if target_count == 0:
 						target_count += 1
 				else:
 					if target_count > 0:	# 対象日を超えた
-						write_log("over target line :" + line)
+						write_log("over target line :" + line[:max_character_count])
 						break
 
 		except ValueError as e:
@@ -207,6 +194,7 @@ def __parse_log_line(log_line: str,
 					 target_date:datetime,
 					 file_name: str,
 					 grep_keyword:str, 
+					 max_character_count:int,
 					 file_timestamp: Optional[datetime]):
 	"""ログ１行を解析　タイムスタンプとログ文字列とエラー状況を分離し、リストに格納"""
 
@@ -236,11 +224,15 @@ def __parse_log_line(log_line: str,
 
 	# UTF-8 文字列にする  文字数は指定数にする
 	log_string = log_line.replace(match.group(), "").strip()
-	log_string_utf8 = __encode_to_utf8(log_string)[:256]
+	log_string_utf8 = __encode_to_utf8(log_string)
 
 	# エラーキーワード抽出
 	if grep_keyword:
 		err_word = __grep_keyword(log_string_utf8, grep_keyword)
+
+	# 出力文字数制限
+	if len(log_string_utf8) > max_character_count:
+		log_string_utf8 = log_string_utf8[:max_character_count] + "..."
 
 	write_log(f"parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8}, err_word: {err_word}", LogLevel.D)
 	return [timestamp, file_name, err_word, log_string_utf8]
