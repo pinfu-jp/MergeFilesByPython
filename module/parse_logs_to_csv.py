@@ -3,6 +3,7 @@ import re
 import csv	
 import json
 import threading
+import time
 
 
 from datetime import datetime, timedelta
@@ -35,6 +36,10 @@ def parse_logs_by_json(json_path):
 
 	with open(json_path, mode='r', encoding='utf-8') as f:
 		json_data = json.load(f)
+
+	# 対象日付が未指定なら本日を指定する
+	if not JSON_KEY.target_ymd.value in json_data:
+		json_data[JSON_KEY.target_ymd.value] = __get_yyyymmdd(time.localtime())
 
 	__parse_logs_to_csv(
 		json_data[JSON_KEY.log_folder.value],
@@ -342,3 +347,12 @@ def __grep_keyword(log_string, grep_keyword):
 		return match.group()
 	else:
 		return ""
+
+
+def __get_yyyymmdd(date:datetime):
+	"""西暦年月日の8桁数値を生成"""
+	year = date.tm_year
+	month = date.tm_mon
+	day = date.tm_mday
+	date_str = f"{year:04}{month:02}{day:02}"
+	return int(date_str)
