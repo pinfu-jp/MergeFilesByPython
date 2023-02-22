@@ -141,8 +141,8 @@ def __parse_log_data_by_files(out_lines, file_path:str, target_date:datetime, gr
 					if target_count == 0:
 						target_count += 1
 				else:
-					# 対象日を超えたので次行以降はチェックしない
-					if target_count > 0:
+					if target_count > 0:	# 対象日を超えた
+						write_log("以降の行は対象外なので解析しない :" + line)
 						break
 
 		except ValueError as e:
@@ -271,8 +271,11 @@ def __encode_to_utf8(some_string):
 	return some_string
 
 
-def __is_target_log(timestamp:datetime, target_date:datetime):
+def __is_target_log(timestamp, target_date:datetime):
 	"""対象日付か判定"""
+
+	if timestamp is None or not isinstance(timestamp, datetime):
+		return False
 
 	if (timestamp.year != target_date.year):
 		return False

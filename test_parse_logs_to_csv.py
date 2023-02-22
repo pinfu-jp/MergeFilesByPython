@@ -1,12 +1,32 @@
 import unittest
 import os
 import shutil
+import random
+import time
 
 from module.parse_logs_to_csv import parse_logs_to_csv, parse_logs_by_json
 
 class TestMergeFilesByPython(unittest.TestCase):
 
-	def _prepare_log_test(self, directory):
+	def __make_random_log(self, filename, line_count):
+
+		# ファイルに書き込む
+		with open(filename, "w") as f:
+
+			for i in range(line_count):
+				# 現在時刻を取得し、ISO 8601フォーマットで文字列に変換する
+				timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+
+				# ランダムな文字列を生成する
+				random_string = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=200))
+
+				# ファイルに書き込む文字列を生成する
+				line = f"{timestamp} {random_string}\n"
+
+				f.write(line)
+
+
+	def __prepare_log_test(self, directory):
 
 		if os.path.exists(directory):
 			shutil.rmtree(directory)
@@ -17,6 +37,7 @@ class TestMergeFilesByPython(unittest.TestCase):
 		test3_log_file = directory + '/' + 'test3.log'
 		test4_log_file = directory + '/' + 'test4_20230215.log'
 		test5_log_file = directory + '/' + 'test5_20240215.log'
+		test6_log_file = directory + '/' + 'test6.log'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
@@ -47,11 +68,14 @@ class TestMergeFilesByPython(unittest.TestCase):
 			f.write('21:51:12 test4 ハイフンログ\n')
 			f.write('22:51:11 test4 log message1\n')
 
-		return test_log_file, test2_log_file, test3_log_file, test4_log_file, test5_log_file
+		self.__make_random_log(test6_log_file, 10000)
+
+		return test_log_file, test2_log_file, test3_log_file, test4_log_file, test5_log_file, test6_log_file
 
 
 	def test_sys_path(self):
 		import sys; print(sys.path)
+
 
 	def test_parse_logs_by_json(self):
 		json = "./ParseLogs.json"
@@ -61,7 +85,7 @@ class TestMergeFilesByPython(unittest.TestCase):
 	def test_parse_logs_to_csv(self):
 
 		directory = "./test_directory"
-		self._prepare_log_test(directory)
+		self.__prepare_log_test(directory)
 
 		# extract_timestamp_and_write_to_csv を実行
 		parse_logs_to_csv(directory, directory, 20230216)

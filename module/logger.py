@@ -12,7 +12,7 @@ DEBUG_LOG_PATH = "debug.log"
 def write_log(log_str:str, level:LogLevel = LogLevel.I, log_path:str = DEBUG_LOG_PATH):
 	""" ログ出力　レベル、パス指定可能"""
 	if log_str:
-		Logger(log_path).write_log(log_str, level)
+		Logger(log_path).write_log(log_str[:256], level)
 
 
 class Logger:
@@ -37,10 +37,12 @@ class Logger:
 
 		with open(self.file_path, "a") as f:
 			f.write(log_str + "\n")
-			self.file_size = os.path.getsize(self.file_path)
-			if self.file_size > 1e6:	# 一定量に達したら古いログを行単位で消す
-				f.seek(0)
-				lines = f.readlines()
-				f.seek(0)
-				f.writelines(lines[1:])
-				f.truncate()
+
+			# 正常に動作しないのでコメント
+			# self.file_size = os.path.getsize(self.file_path)
+			# if self.file_size > 1e6:	# 一定量に達したら古いログを行単位で消す
+			# 	f.seek(0)
+			# 	lines = f.readlines()
+			# 	f.seek(0)
+			# 	f.writelines(lines[1:])
+			# 	f.truncate()
