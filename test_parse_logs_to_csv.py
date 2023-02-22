@@ -8,22 +8,26 @@ from module.parse_logs_to_csv import parse_logs_to_csv, parse_logs_by_json
 
 class TestMergeFilesByPython(unittest.TestCase):
 
-	def __make_random_log(self, filename, line_count):
+	def test_sys_path(self):
+		import sys; print(sys.path)
 
-		# ファイルに書き込む
-		with open(filename, "w") as f:
 
-			for i in range(line_count):
-				# 現在時刻を取得し、ISO 8601フォーマットで文字列に変換する
-				timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+	def test_parse_logs_by_json(self):
+		json = "./ParseLogs.json"
+		parse_logs_by_json(json)
 
-				# ランダムな文字列を生成する
-				random_string = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=200))
 
-				# ファイルに書き込む文字列を生成する
-				line = f"{timestamp} {random_string}\n"
+	def test_parse_logs_to_csv(self):
 
-				f.write(line)
+		directory = "./test_directory"
+		self.__prepare_log_test(directory)
+
+		# extract_timestamp_and_write_to_csv を実行
+		parse_logs_to_csv(directory, directory, 20230216)
+
+		# テスト後に作成したファイルを削除
+		# os.remove(test_log_file)
+		# os.remove(test_csv_file)
 
 
 	def __prepare_log_test(self, directory):
@@ -73,35 +77,23 @@ class TestMergeFilesByPython(unittest.TestCase):
 		return test_log_file, test2_log_file, test3_log_file, test4_log_file, test5_log_file, test6_log_file
 
 
-	def test_sys_path(self):
-		import sys; print(sys.path)
+	def __make_random_log(self, filename, line_count):
+		"""ランダムな大量データが入ったログファイルを作成"""
 
+		# ファイルに書き込む
+		with open(filename, "w") as f:
 
-	def test_parse_logs_by_json(self):
-		json = "./ParseLogs.json"
-		parse_logs_by_json(json)
+			for i in range(line_count):
+				# 現在時刻を取得し、文字列に変換する
+				timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
 
+				# ランダムな文字列を生成する
+				random_string = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=200))
 
-	def test_parse_logs_to_csv(self):
+				# ファイルに書き込む文字列を生成する
+				line = f"{timestamp} {random_string}\n"
 
-		directory = "./test_directory"
-		self.__prepare_log_test(directory)
-
-		# extract_timestamp_and_write_to_csv を実行
-		parse_logs_to_csv(directory, directory, 20230216)
-
-		# 生成されたcsvファイルが期待通りか確認
-		# with open('test_output.csv', 'r') as f:
-		# 	lines = f.readlines()
-		# 	self.assertEqual(lines[0], '2022.12.31 14:51:11,log message1\n')
-		# 	self.assertEqual(lines[1], '2022.12.31 14:51:12,log message2\n')
-		# 	self.assertEqual(lines[2], '2023.01.11 14:51:12, ドットログ\n')
-		# 	self.assertEqual(lines[3], '2023.12.31 14:51:12, ハイフンログ\n')
-
-		# テスト後に作成したファイルを削除
-		# os.remove(test_log_file)
-		# os.remove(test_csv_file)
-
+				f.write(line)
 
 
 if __name__ == '__main__':
