@@ -191,8 +191,9 @@ def __parse_log_line(log_line: str, file_name: str, grep_keyword:str, file_times
 	log_string = log_line.replace(match.group(), "").strip()
 	log_string_utf8 = __encode_to_utf8(log_string)
 
-	# エラーキーワード取得
-	err_word = __grep_keyword(log_string_utf8, grep_keyword)
+	# エラーキーワード抽出
+	if grep_keyword:
+		err_word = __grep_keyword(log_string_utf8, grep_keyword)
 
 	write_log(f"parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8}, err_word: {err_word}", LogLevel.D)
 	return [timestamp, file_name, err_word, log_string_utf8]
@@ -295,7 +296,7 @@ def __make_csv_path(csv_folder_path:str, target_date:datetime):
 
 
 def __grep_keyword(log_string, grep_keyword):
-	"""エラーを示すキーワードを取得"""
+	"""キーワードを抽出"""
 
 	match = re.search(grep_keyword, log_string)
 	if match:

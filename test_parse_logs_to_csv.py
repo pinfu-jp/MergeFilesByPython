@@ -41,7 +41,6 @@ class TestMergeFilesByPython(unittest.TestCase):
 		test3_log_file = directory + '/' + 'test3.log'
 		test4_log_file = directory + '/' + 'test4_20230215.log'
 		test5_log_file = directory + '/' + 'test5_20240215.log'
-		test6_log_file = directory + '/' + 'test6.log'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
@@ -72,9 +71,13 @@ class TestMergeFilesByPython(unittest.TestCase):
 			f.write('21:51:12 test4 ハイフンログ\n')
 			f.write('22:51:11 test4 log message1\n')
 
-		self.__make_random_log(test6_log_file, 10000)
+		self.__make_random_logs(directory)
 
-		return test_log_file, test2_log_file, test3_log_file, test4_log_file, test5_log_file, test6_log_file
+
+	def __make_random_logs(self, directory):
+		for i in range(30):
+			test_log_file = directory + '/' + f'test{i}.log'
+			self.__make_random_log(test_log_file, 10000)
 
 
 	def __make_random_log(self, filename, line_count):
