@@ -15,8 +15,8 @@ python .\setup.py build
 
 ### マウスクリックで実行
 
-# .\build\exe.win-amd64-3.11\ParseLogs.exe をダブルクリック
-# JSONファイル選択画面で ParseLogs.json を選択
+* .\build\exe.win-amd64-3.11\ParseLogs.exe をダブルクリック
+* JSONファイル選択画面で ParseLogs.json を選択
 
 ### コマンドラインで実行
 
