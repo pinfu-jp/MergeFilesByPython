@@ -63,10 +63,10 @@ def parse_logs_to_csv(	log_folder_path:str,
 
 # 以下、private 関数
 
-def __parse_one_day_logs_to_csv(	log_folder_path, 
+def __parse_one_day_logs_to_csv(log_folder_path:str, 
 								target_date:datetime,
 								grep_keyword:str,
-								csv_file_path):
+								csv_file_path:str):
 	"""指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力"""
 
 	write_log("parse_logs_to_csv() start")
@@ -134,9 +134,8 @@ def __parse_log_data_by_files(out_lines, file_path:str, target_date:datetime, gr
 
 			for line in f:
 				# 行解析
-				parsed = __parse_log_line(line, file_name, grep_keyword, file_timestamp)
-				# 対象日なら出力
-				if __is_target_log(parsed[0], target_date):
+				parsed = __parse_log_line(line, target_date, file_name, grep_keyword, file_timestamp)
+				if parsed:
 					out_lines.append(parsed)
 					if target_count == 0:
 						target_count += 1
@@ -164,7 +163,7 @@ def __get_datetime_by_file_name(file_name) -> datetime:
 TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 
-def __parse_log_line(log_line: str, file_name: str, grep_keyword:str, file_timestamp: Optional[datetime]):
+def __parse_log_line(log_line: str, target_date:datetime, file_name: str, grep_keyword:str, file_timestamp: Optional[datetime]):
 	"""ログ１行を解析　タイムスタンプとログ文字列とエラー状況を分離し、リストに格納"""
 
 	write_log(f"parse_log_line start log_line: {log_line}, file_name: {file_name}", LogLevel.D)
@@ -186,6 +185,10 @@ def __parse_log_line(log_line: str, file_name: str, grep_keyword:str, file_times
 			return None
 
 		timestamp = __datetime_by_text(match.group())
+
+	# 対象日以外は出力しない
+	if not __is_target_log(timestamp, target_date):
+		return None
 
 	# UTF-8 文字列にする
 	log_string = log_line.replace(match.group(), "").strip()
