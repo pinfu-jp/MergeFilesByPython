@@ -37,10 +37,10 @@ class TestMergeFilesByPython(unittest.TestCase):
 			f.write('[22/01/31 14:51:13] test3 log message2\n')
 			f.write('23.02.13 14:51:11.2 test3 2023.01.11 ドットログエラーです\n')
 			f.write('23.02.14 14:51:11 test3 2023.01.11 ドットログあああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ\n')
-			f.write('23.02.15 14:51:11 test3 2023.01.11 ドットログ\n')
+			f.write('23.02.15 14:51:11 test3 2023.01.11 ドットログerror\n')
 
 		with open(test4_log_file, 'w') as f:
-			f.write('21:51:12 test4 ハイフンログ\n')
+			f.write('21:51:12 test4 exception null pointer\n')
 			f.write('22:51:11.800 test4 log message1\n')
 
 		with open(test5_log_file, 'w') as f:

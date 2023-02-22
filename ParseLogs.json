@@ -1,7 +1,7 @@
 {
-    "log_folder_path": "C:\\dev\\github\\MergeFilesByPython\\test_directory",
-    "csv_folder_path": "C:\\dev\\github\\MergeFilesByPython\\out_directory",
-    "target_yyyymmdd": 20230215,
-    "go_back_days": 5,
-	"max_line_length":1000
+    "解析対象ログフォルダ": "C:\\dev\\github\\MergeFilesByPython\\test_directory",
+    "解析結果出力先フォルダ": "C:\\dev\\github\\MergeFilesByPython\\out_directory",
+    "解析対象日": 20230215,
+    "遡る日数": 5,
+	"抽出キーワード（正規表現）":"err|except|エラー|warn|警告"
 }

@@ -12,34 +12,43 @@ from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 OUT_SYMBLE_PRE_WORD = '●'
 OUT_CSV_NAME = OUT_SYMBLE_PRE_WORD + 'parsed_log'
 
+DEF_GO_BACK_COUNT = 5
+DEF_ERR_TEXT_PATTERN = "err|except|エラー|warn|警告"
 
 class JSON_KEY(Enum):
 	"""JSONファイルのキー定義"""
 
-	log_folder = 'log_folder_path'
-	csv_folder = 'csv_folder_path'
-	target_ymd = 'target_yyyymmdd'
-	go_back_days = 'go_back_days'
+	log_folder = '解析対象ログフォルダ'
+	csv_folder = '解析結果出力先フォルダ'
+	target_ymd = '解析対象日'
+	go_back_days = '遡る日数'
+	grep_keyword = '抽出キーワード（正規表現）'
+	max_words_per_line = '1行当たりの最大文字数'
 	debug_path = 'debug_path'
 
 
 def parse_logs_by_json(json_path):
 	"""JSON設定に従ったログ解析"""
 
-	with open(json_path, 'r') as f:
+	with open(json_path, mode='r', encoding='utf-8') as f:
 		json_data = json.load(f)
 
 	parse_logs_to_csv(
 		json_data[JSON_KEY.log_folder.value],
 		json_data[JSON_KEY.csv_folder.value],
 		json_data[JSON_KEY.target_ymd.value],
-		json_data[JSON_KEY.go_back_days.value]
+		json_data[JSON_KEY.go_back_days.value],
+		json_data[JSON_KEY.grep_keyword.value]
 		)
 
 	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
 
 
-def parse_logs_to_csv(log_folder_path:str, csv_folder_path:str, target_yyyymmdd:int, go_back_day_count:int = 5):
+def parse_logs_to_csv(	log_folder_path:str, 
+						csv_folder_path:str, 
+						target_yyyymmdd:int, 
+						go_back_day_count:int = DEF_GO_BACK_COUNT, 
+						grep_keyword:str = DEF_ERR_TEXT_PATTERN):
 	"""指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力"""
 
 	write_log("parse_logs_to_csv() start target_yyyymmdd:" + str(target_yyyymmdd))
@@ -48,10 +57,16 @@ def parse_logs_to_csv(log_folder_path:str, csv_folder_path:str, target_yyyymmdd:
 	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
 	for i in range(0, go_back_day_count):
 		target_date = target_day - timedelta(days=i)
-		csv_path = make_csv_path(csv_folder_path, target_date)
-		parse_one_day_logs_to_csv(log_folder_path, target_date, csv_path)
+		csv_path = __make_csv_path(csv_folder_path, target_date)
+		__parse_one_day_logs_to_csv(log_folder_path, target_date, grep_keyword, csv_path)
 
-def parse_one_day_logs_to_csv(log_folder_path, target_date:datetime, csv_file_path):
+
+# 以下、private 関数
+
+def __parse_one_day_logs_to_csv(	log_folder_path, 
+								target_date:datetime,
+								grep_keyword:str,
+								csv_file_path):
 	"""指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力"""
 
 	write_log("parse_logs_to_csv() start")
@@ -59,13 +74,13 @@ def parse_one_day_logs_to_csv(log_folder_path, target_date:datetime, csv_file_pa
 	out_lines = []
 	for file_name in os.listdir(log_folder_path):
 		file_path = os.path.join(log_folder_path, file_name)
-		parse_timestamp_by_files(out_lines, file_path, target_date)
+		__parse_log_data_by_files(out_lines, file_path, target_date, grep_keyword)
 
 	# タイムスタンプでソート 
 	out_lines = sorted(out_lines, key=lambda x: x[0])
 
 	# 最後にヘッダー行を足す
-	header_line = ["タイムスタンプ","ファイル名","ログ内容"]
+	header_line = ["タイムスタンプ","ファイル名","キーワード","ログ内容"]
 	out_lines.insert(0, header_line)
 
 	# 親フォルダが存在しない場合にフォルダを再帰的に作成する
@@ -80,17 +95,14 @@ def parse_one_day_logs_to_csv(log_folder_path, target_date:datetime, csv_file_pa
 				if isinstance(line[i], datetime):
 					text = line[i].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]	# マイクロ秒 → ミリ秒変換あり
 					line[i] = text	# 出力用文字列に置換
-
 				# writer.writerow([line[i]])
-
 			# writer.writerow(line)
-
 		writer.writerows(out_lines)
 		write_log("parse_logs_to_csv() end success")
 
 
-def parse_timestamp_by_files(out_lines, file_path:str, target_date:datetime):
-	"""ファイルからタイムスタンプと文字列を抽出"""
+def __parse_log_data_by_files(out_lines, file_path:str, target_date:datetime, grep_keyword:str):
+	"""ファイルからログデータを解析"""
 
 	write_log("parse_timestamp_by_files() file:" + file_path, LogLevel.D)
 
@@ -114,17 +126,17 @@ def parse_timestamp_by_files(out_lines, file_path:str, target_date:datetime):
 			file_name = os.path.basename(file_path)
 
 			# ファイル名で対象外が判明している場合は処理しない
-			file_timestamp = get_datetime_by_file_name(file_name)
+			file_timestamp = __get_datetime_by_file_name(file_name)
 			if file_timestamp :
-				if is_target_log(file_timestamp, target_date) == False:
+				if __is_target_log(file_timestamp, target_date) == False:
 					write_log("not target date file:" + file_path)
 					return
 
 			for line in f:
 				# 行解析
-				parsed = parse_timestamp(line, file_name, file_timestamp)
+				parsed = __parse_log_line(line, file_name, grep_keyword, file_timestamp)
 				# 対象日なら出力
-				if is_target_log(parsed[0], target_date):
+				if __is_target_log(parsed[0], target_date):
 					out_lines.append(parsed)
 					if target_count == 0:
 						target_count += 1
@@ -137,7 +149,7 @@ def parse_timestamp_by_files(out_lines, file_path:str, target_date:datetime):
 			write_log("error:" + str(e), LogLevel.E)
 
 
-def get_datetime_by_file_name(file_name) -> datetime:
+def __get_datetime_by_file_name(file_name) -> datetime:
 	"""ファイル名のyyyymmdd形式文字から日付を取り出す"""
 	match = re.search(r'\d{8}', file_name)
 	if match:
@@ -152,11 +164,10 @@ def get_datetime_by_file_name(file_name) -> datetime:
 TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 
+def __parse_log_line(log_line: str, file_name: str, grep_keyword:str, file_timestamp: Optional[datetime]):
+	"""ログ１行を解析　タイムスタンプとログ文字列とエラー状況を分離し、リストに格納"""
 
-def parse_timestamp(log_line: str, file_name: str, file_timestamp: Optional[datetime]):
-	"""タイムスタンプとログ文字列を分離し、リストに格納"""
-
-	write_log(f"parse_timestamp start log_line: {log_line}, file_name: {file_name}", LogLevel.D)
+	write_log(f"parse_log_line start log_line: {log_line}, file_name: {file_name}", LogLevel.D)
 
 	# 引数チェック
 	if not log_line or not file_name:
@@ -167,23 +178,26 @@ def parse_timestamp(log_line: str, file_name: str, file_timestamp: Optional[date
 		if not match:
 			return None
 
-		timestamp = combine_time_str_to_datetime(file_timestamp, match.group())
+		timestamp = __combine_time_str_to_datetime(file_timestamp, match.group())
 
 	else:  # ファイル名に日付は付いていないケース
 		match = TIMESTAMP_PATTERN.search(log_line)
 		if not match:
 			return None
 
-		timestamp = datetime_by_text(match.group())
+		timestamp = __datetime_by_text(match.group())
 
 	# UTF-8 文字列にする
 	log_string = log_line.replace(match.group(), "").strip()
-	log_string_utf8 = encode_to_utf8(log_string)
+	log_string_utf8 = __encode_to_utf8(log_string)
 
-	write_log(f"parse_timestamp end timestamp: {timestamp}, log_string_utf8: {log_string_utf8}", LogLevel.D)
-	return [timestamp, file_name, log_string_utf8]
+	# エラーキーワード取得
+	err_word = __grep_keyword(log_string_utf8, grep_keyword)
 
-def datetime_by_text(timestamp_str:str) -> datetime:
+	write_log(f"parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8}, err_word: {err_word}", LogLevel.D)
+	return [timestamp, file_name, err_word, log_string_utf8]
+
+def __datetime_by_text(timestamp_str:str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""
 
 	try:
@@ -209,7 +223,7 @@ def datetime_by_text(timestamp_str:str) -> datetime:
 		return None
 
 
-def combine_time_str_to_datetime(datetime, time_str) -> datetime:
+def __combine_time_str_to_datetime(datetime, time_str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""
 
 	try:
@@ -244,7 +258,7 @@ def __add_milli_sec_ifneed(datetime:datetime, timestamp_str, milli_sec_pos) -> d
 
 	return datetime
 
-def encode_to_utf8(some_string):
+def __encode_to_utf8(some_string):
 	"""文字列をUTF8にエンコード"""
 
 	if isinstance(some_string, bytes):
@@ -257,7 +271,7 @@ def encode_to_utf8(some_string):
 	return some_string
 
 
-def is_target_log(timestamp:datetime, target_date:datetime):
+def __is_target_log(timestamp:datetime, target_date:datetime):
 	"""対象日付か判定"""
 
 	if (timestamp.year != target_date.year):
@@ -271,7 +285,17 @@ def is_target_log(timestamp:datetime, target_date:datetime):
 
 	return True
 
-def make_csv_path(csv_folder_path:str, target_date:datetime):
+def __make_csv_path(csv_folder_path:str, target_date:datetime):
 	"""CSVファイルパスを作成"""
 	return os.path.join(csv_folder_path, OUT_CSV_NAME + "_" + target_date.strftime('%Y%m%d') + ".csv")
     # return os.path.join(csv_folder_path, f"{OUT_CSV_NAME}_{target_date.strftime('%Y%m%d')}.csv")
+
+
+def __grep_keyword(log_string, grep_keyword):
+	"""エラーを示すキーワードを取得"""
+
+	match = re.search(grep_keyword, log_string)
+	if match:
+		return match.group()
+	else:
+		return ""
