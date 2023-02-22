@@ -2,6 +2,8 @@ import os
 import re
 import csv	
 import json
+import threading
+
 
 from datetime import datetime, timedelta
 from typing import Optional
@@ -27,21 +29,59 @@ class JSON_KEY(Enum):
 	debug_path = 'debug_path'
 
 
-def parse_logs_by_json(json_path):
+def parse_logs_by_json(json_path, multi_thread = True):
 	"""JSON設定に従ったログ解析"""
 
 	with open(json_path, mode='r', encoding='utf-8') as f:
 		json_data = json.load(f)
 
-	parse_logs_to_csv(
-		json_data[JSON_KEY.log_folder.value],
-		json_data[JSON_KEY.csv_folder.value],
-		json_data[JSON_KEY.target_ymd.value],
-		json_data[JSON_KEY.go_back_days.value],
-		json_data[JSON_KEY.grep_keyword.value]
-		)
+	if multi_thread:
+		parse_logs_to_csv_by_multi_thread(
+			json_data[JSON_KEY.log_folder.value],
+			json_data[JSON_KEY.csv_folder.value],
+			json_data[JSON_KEY.target_ymd.value],
+			json_data[JSON_KEY.go_back_days.value],
+			json_data[JSON_KEY.grep_keyword.value]
+			)
+	else:
+		parse_logs_to_csv(
+			json_data[JSON_KEY.log_folder.value],
+			json_data[JSON_KEY.csv_folder.value],
+			json_data[JSON_KEY.target_ymd.value],
+			json_data[JSON_KEY.go_back_days.value],
+			json_data[JSON_KEY.grep_keyword.value]
+			)
 
 	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
+
+
+def parse_logs_to_csv_by_multi_thread(log_folder_path:str, 
+										csv_folder_path:str, 
+										target_yyyymmdd:int, 
+										go_back_day_count:int = DEF_GO_BACK_COUNT, 
+										grep_keyword:str = DEF_ERR_TEXT_PATTERN):
+	"""指定されたフォルダ内のログファイルを解析し、対象日付のログをcsvファイルに出力　日付毎にスレッド化"""
+
+	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
+
+	# スレッドは対象日毎に作成
+	threads = []
+	for i in range(0, go_back_day_count):
+		target_date = target_day - timedelta(days=i)
+		csv_path = __make_csv_path(csv_folder_path, target_date)
+		thread = threading.Thread(target=__parse_one_day_logs_to_csv,
+						 			args=(	log_folder_path,
+											target_date,
+											grep_keyword,
+											csv_path))
+		threads.append(thread)
+
+		write_log("start thread target_date:" + str(target_date))
+		thread.start()
+
+	# 全スレッドが終了するまでメインスレッドを待機
+	for thread in threads:
+		thread.join()
 
 
 def parse_logs_to_csv(	log_folder_path:str, 
@@ -141,7 +181,7 @@ def __parse_log_data_by_files(out_lines, file_path:str, target_date:datetime, gr
 						target_count += 1
 				else:
 					if target_count > 0:	# 対象日を超えた
-						write_log("以降の行は対象外なので解析しない :" + line)
+						write_log("over target line :" + line)
 						break
 
 		except ValueError as e:
@@ -163,7 +203,11 @@ def __get_datetime_by_file_name(file_name) -> datetime:
 TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 
-def __parse_log_line(log_line: str, target_date:datetime, file_name: str, grep_keyword:str, file_timestamp: Optional[datetime]):
+def __parse_log_line(log_line: str,
+					 target_date:datetime,
+					 file_name: str,
+					 grep_keyword:str, 
+					 file_timestamp: Optional[datetime]):
 	"""ログ１行を解析　タイムスタンプとログ文字列とエラー状況を分離し、リストに格納"""
 
 	write_log(f"parse_log_line start log_line: {log_line}, file_name: {file_name}", LogLevel.D)
@@ -190,9 +234,9 @@ def __parse_log_line(log_line: str, target_date:datetime, file_name: str, grep_k
 	if not __is_target_log(timestamp, target_date):
 		return None
 
-	# UTF-8 文字列にする
+	# UTF-8 文字列にする  文字数は指定数にする
 	log_string = log_line.replace(match.group(), "").strip()
-	log_string_utf8 = __encode_to_utf8(log_string)
+	log_string_utf8 = __encode_to_utf8(log_string)[:256]
 
 	# エラーキーワード抽出
 	if grep_keyword:

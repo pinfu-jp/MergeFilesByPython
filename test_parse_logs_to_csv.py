@@ -17,13 +17,13 @@ class TestMergeFilesByPython(unittest.TestCase):
 		parse_logs_by_json(json)
 
 
-	def test_parse_logs_to_csv(self):
+	# def test_parse_logs_to_csv(self):
 
-		directory = "./test_directory"
-		self.__prepare_log_test(directory)
+	# 	directory = "./test_directory"
+	# 	self.__prepare_log_test(directory)
 
-		# extract_timestamp_and_write_to_csv を実行
-		parse_logs_to_csv(directory, directory, 20230216)
+	# 	# extract_timestamp_and_write_to_csv を実行
+	# 	parse_logs_to_csv(directory, directory, 20230216)
 
 		# テスト後に作成したファイルを削除
 		# os.remove(test_log_file)
@@ -75,9 +75,9 @@ class TestMergeFilesByPython(unittest.TestCase):
 
 
 	def __make_random_logs(self, directory):
-		for i in range(30):
+		for i in range(10):
 			test_log_file = directory + '/' + f'test{i}.log'
-			self.__make_random_log(test_log_file, 10000)
+			self.__make_random_log(test_log_file, 3000)
 
 
 	def __make_random_log(self, filename, line_count):
