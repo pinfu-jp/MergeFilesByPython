@@ -1,7 +1,7 @@
 import sys
 import os
 
-from module.parse_logs_to_csv import parse_logs_by_json
+from module.merge_logs_by_json import merge_logs_by_json
 from module.select_folder import select_json_file
 from module.open_csv import open_csv
 from module.messagebox import show_message
@@ -28,7 +28,7 @@ def main():
 			return
 
 		# 解析実行
-		csv_folder_path = parse_logs_by_json(json_path)
+		csv_folder_path = merge_logs_by_json(json_path)
 
 		# CSVファイルを開く
 		open_csv(csv_folder_path)
