@@ -1,11 +1,14 @@
 import os
+import logging
+import threading
 from enum import Enum
 
-class LogLevel(str, Enum):
-	D = "[Debug]"
-	I = "[Info]"
-	W = "[Warning]"
-	E = "[Error]"
+class LogLevel(int, Enum):
+	D = logging.DEBUG
+	I = logging.INFO
+	W = logging.WARNING
+	E = logging.ERROR
+	C = logging.CRITICAL
 
 DEBUG_LOG_PATH = "debug.log"
 
@@ -21,8 +24,34 @@ class Logger:
 	def __new__(cls, file_path):
 		if cls._instance is None:
 			cls._instance = super().__new__(cls)
-			cls._instance.file_path = file_path
-			cls._instance.file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
+
+			# ロガーを作成する
+			logger = logging.getLogger('parse_logs_logger')
+			logger.setLevel(logging.DEBUG)
+
+			# ログのフォーマットを設定する
+			# formatter = logging.Formatter('%(asctime)s - %(name)s - %(thread)d - %(levelname)s - %(message)s')
+			formatter = logging.Formatter('%(asctime)s <%(thread)d> [%(levelname)s] %(message)s')
+
+			# コンソールハンドラーを作成する
+			console_handler = logging.StreamHandler()
+			console_handler.setLevel(logging.DEBUG)
+			console_handler.setFormatter(formatter)
+
+			if os.path.exists(file_path):
+				os.remove(file_path)	# すでにある場合は削除する
+
+			# ファイルハンドラーを作成する
+			file_handler = logging.FileHandler(file_path)
+			file_handler.setLevel(logging.INFO)		# ファイル出力は info 以上
+			file_handler.setFormatter(formatter)
+
+			# ロガーにハンドラーを追加する
+			logger.addHandler(file_handler)
+			logger.addHandler(console_handler)
+
+			cls._instance.logger = logger
+
 		return cls._instance
 
 	def write_log(self, log_str:str, level:LogLevel):
@@ -30,19 +59,15 @@ class Logger:
 		if (log_str == None):
 			return
 
-		print(log_str)
+		if (level == LogLevel.D):
+			self.logger.debug(log_str)
+		elif (level == LogLevel.I):
+			self.logger.info(log_str)
+		elif (level == LogLevel.w):
+			self.logger.warning(log_str)
+		elif (level == LogLevel.E):
+			self.logger.error(log_str)
+		elif (level == LogLevel.C):
+			self.logger.critical(log_str)
 
-		if level == LogLevel.D:	# debug は ファイル出力しない
-			return
 
-		with open(self.file_path, "a") as f:
-			f.write(log_str + "\n")
-
-			# 正常に動作しないのでコメント
-			# self.file_size = os.path.getsize(self.file_path)
-			# if self.file_size > 1e6:	# 一定量に達したら古いログを行単位で消す
-			# 	f.seek(0)
-			# 	lines = f.readlines()
-			# 	f.seek(0)
-			# 	f.writelines(lines[1:])
-			# 	f.truncate()
