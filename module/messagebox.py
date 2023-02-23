@@ -8,5 +8,5 @@ TITLE = 'ParseLogs'
 def show_message(message: str):
 	"""メッセージボックスを表示"""
 
-	write_log(TITLE + " " + message)
+	write_log('show_message ' + TITLE + " " + message)
 	messagebox.showinfo(TITLE, message)		

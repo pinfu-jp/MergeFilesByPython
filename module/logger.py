@@ -1,7 +1,8 @@
 import os
 import logging
-import threading
 from enum import Enum
+
+from module.__init__ import APP_NAME
 
 class LogLevel(int, Enum):
 	D = logging.DEBUG
@@ -10,7 +11,7 @@ class LogLevel(int, Enum):
 	E = logging.ERROR
 	C = logging.CRITICAL
 
-DEBUG_LOG_PATH = "debug.log"
+DEBUG_LOG_PATH = f"{APP_NAME}.log"
 
 def write_log(log_str:str, level:LogLevel = LogLevel.I, log_path:str = DEBUG_LOG_PATH):
 	""" ログ出力　レベル、パス指定可能"""

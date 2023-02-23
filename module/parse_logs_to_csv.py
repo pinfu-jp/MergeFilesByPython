@@ -5,7 +5,6 @@ import json
 import threading
 import time
 
-
 from datetime import datetime, timedelta
 from typing import Optional
 from enum import Enum
@@ -65,9 +64,9 @@ def __parse_logs_to_csv(log_folder_path:str,
 
 	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
 
-	# スレッドは対象日毎に作成
 	threads = []
 	for i in range(0, go_back_day_count):
+		# 対象日毎にスレッドを分けて実行
 		target_date = target_day - timedelta(days=i)
 		csv_path = __make_csv_path(csv_folder_path, target_date)
 		thread = threading.Thread(target=__parse_one_day_logs_to_csv,
@@ -86,6 +85,20 @@ def __parse_logs_to_csv(log_folder_path:str,
 		thread.join()
 
 
+class SharedOutLines:
+	"""スレッド間共有 出力行メモリ領域"""
+
+	def __init__(self):
+		self.out_lines = []
+		self.lock = threading.Lock()
+
+	def increment(self, out_line):
+		with self.lock:
+			self.out_lines.append(out_line)
+
+	def get_out_lines(self):
+		return self.out_lines
+
 def __parse_one_day_logs_to_csv(log_folder_path:str, 
 								target_date:datetime,
 								grep_keyword:str,
@@ -95,10 +108,28 @@ def __parse_one_day_logs_to_csv(log_folder_path:str,
 
 	write_log("parse_logs_to_csv() start")
 
-	out_lines = []
+	share_out_lines = SharedOutLines() # スレッド間共有 出力行配列
+
+	threads = []
 	for file_name in os.listdir(log_folder_path):
+		# 対象ファイル毎にスレッドを分けて実行
 		file_path = os.path.join(log_folder_path, file_name)
-		__parse_log_data_by_files(out_lines, file_path, target_date, grep_keyword, max_character_count)
+		thread = threading.Thread(target=__parse_log_data_by_files,
+									args=(	share_out_lines,
+											file_path,
+											target_date,
+											grep_keyword,
+											max_character_count))
+		threads.append(thread)
+
+		write_log("start thread target_date:" + str(target_date))
+		thread.start()
+
+	# 全スレッドが終了するまでメインスレッドを待機
+	for thread in threads:
+		thread.join()
+
+	out_lines = share_out_lines.get_out_lines()
 
 	# タイムスタンプでソート 
 	out_lines = sorted(out_lines, key=lambda x: x[0])
@@ -125,7 +156,8 @@ def __parse_one_day_logs_to_csv(log_folder_path:str,
 		write_log("parse_logs_to_csv() end success")
 
 
-def __parse_log_data_by_files(out_lines, file_path:str,
+def __parse_log_data_by_files(out_lines: SharedOutLines,
+							  file_path:str,
 							  target_date:datetime,
 							  grep_keyword:str,
 							  max_character_count:int):
@@ -168,7 +200,7 @@ def __parse_log_data_by_files(out_lines, file_path:str,
 										 max_character_count, 
 										 file_timestamp)
 				if parsed:
-					out_lines.append(parsed)
+					out_lines.increment(parsed)
 					if target_count == 0:
 						target_count += 1
 				else:
@@ -203,7 +235,7 @@ def __parse_log_line(log_line: str,
 					 file_timestamp: Optional[datetime]):
 	"""ログ１行を解析　タイムスタンプとログ文字列とエラー状況を分離し、リストに格納"""
 
-	write_log(f"parse_log_line start log_line: {log_line}, file_name: {file_name}", LogLevel.D)
+	write_log(f"parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
 
 	# 引数チェック
 	if not log_line or not file_name:
@@ -233,14 +265,14 @@ def __parse_log_line(log_line: str,
 
 	# エラーキーワード抽出
 	if grep_keyword:
-		err_word = __grep_keyword(log_string_utf8, grep_keyword)
+		key_word = __grep_keyword(log_string_utf8, grep_keyword)
 
 	# 出力文字数制限
 	if len(log_string_utf8) > max_character_count:
 		log_string_utf8 = log_string_utf8[:max_character_count] + "..."
 
-	write_log(f"parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8}, err_word: {err_word}", LogLevel.D)
-	return [timestamp, file_name, err_word, log_string_utf8]
+	write_log(f"parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
+	return [timestamp, file_name, key_word, log_string_utf8]
 
 def __datetime_by_text(timestamp_str:str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""
