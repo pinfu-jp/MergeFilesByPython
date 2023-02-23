@@ -6,7 +6,7 @@ from module.logger import write_log, LogLevel
 def open_csv(csv_path):
 	"""CSVファイルを開く"""
 
-	# Logger.write_log("open_csv csv_path:" + csv_path)
+	write_log("open_csv path:" + csv_path)
 	try:
 		# ディレクトリで指定されたら、降順の先頭ファイルのみ開く
 		target_file = csv_path

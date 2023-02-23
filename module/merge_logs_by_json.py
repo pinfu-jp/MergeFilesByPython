@@ -10,6 +10,9 @@ from typing import Optional
 from enum import Enum
 
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
+from module.datetime_util import \
+	datetime_by_text, combine_time_str_to_datetime,\
+	is_same_day, get_datetime_by_str
 
 OUT_SYMBLE_PRE_WORD = '●'
 OUT_CSV_NAME = OUT_SYMBLE_PRE_WORD + 'parsed_log'
@@ -30,10 +33,10 @@ class JSON_KEY(Enum):
 	debug_path = 'debug_path'
 
 
-def parse_logs_by_json(json_path):
-	"""JSON設定に従ったログ解析"""
+def merge_logs_by_json(json_path):
+	"""JSON設定に従ったログファイル群マージ"""
 
-	write_log(f"parse_logs_by_json start json:{json_path}")
+	write_log(f"merge_logs_by_json start json:{json_path}")
 	start_time = time.time()
 
 	with open(json_path, mode='r', encoding='utf-8') as f:
@@ -43,7 +46,7 @@ def parse_logs_by_json(json_path):
 	if not JSON_KEY.target_ymd.value in json_data:
 		json_data[JSON_KEY.target_ymd.value] = __get_yyyymmdd(time.localtime())
 
-	__parse_logs_to_csv(
+	__merge_logs_to_csv(
 		json_data[JSON_KEY.log_folder.value],
 		json_data[JSON_KEY.csv_folder.value],
 		json_data[JSON_KEY.target_ymd.value],
@@ -53,20 +56,20 @@ def parse_logs_by_json(json_path):
 		)
 
 	elapsed_sec_time = time.time() - start_time
-	write_log(f"parse_logs_by_json end  csv_folder:{json_data[JSON_KEY.csv_folder.value]} time: {elapsed_sec_time:.2f} sec")
+	write_log(f"merge_logs_by_json end  csv_folder:{json_data[JSON_KEY.csv_folder.value]} time: {elapsed_sec_time:.2f} sec")
 
 	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
 
 
 # 以下、private 関数
 
-def __parse_logs_to_csv(log_folder_path:str, 
+def __merge_logs_to_csv(log_folder_path:str, 
 						csv_folder_path:str, 
 						target_yyyymmdd:int, 
 						go_back_day_count:int = DEF_GO_BACK_COUNT, 
 						grep_keyword:str = DEF_ERR_TEXT_PATTERN,
 						max_character_count:int = DEF_MAX_CHARACTER_COUNT):
-	"""指定されたフォルダ内のログファイルを解析し、対象日付のログをcsvファイルに出力　日付毎にスレッド化"""
+	"""指定されたフォルダ内のログファイル群を解析し、マージして日単位にcsvファイルに出力"""
 
 	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
 
@@ -75,7 +78,7 @@ def __parse_logs_to_csv(log_folder_path:str,
 		# 対象日毎にスレッドを分けて実行
 		target_date = target_day - timedelta(days=i)
 		csv_path = __make_csv_path(csv_folder_path, target_date)
-		thread = threading.Thread(target=__parse_one_day_logs_to_csv,
+		thread = threading.Thread(target=__merge_one_day_logs_to_csv,
 						 			args=(	log_folder_path,
 											target_date,
 											grep_keyword,
@@ -91,37 +94,38 @@ def __parse_logs_to_csv(log_folder_path:str,
 		thread.join()
 
 
-class SharedOutLines:
-	"""スレッド間共有 出力行メモリ領域"""
+class SharedMergeLines:
+	"""スレッド間共有 マージ行メモリ領域"""
 
 	def __init__(self):
-		self.out_lines = []
-		self.lock = threading.Lock()
+		self._merge_lines = []
+		self._lock = threading.Lock()
 
 	def increment(self, out_line):
-		with self.lock:
-			self.out_lines.append(out_line)
+		with self._lock:
+			self._merge_lines.append(out_line)
 
-	def get_out_lines(self):
-		return self.out_lines
+	def get_merge_lines(self):
+		return self._merge_lines
 
-def __parse_one_day_logs_to_csv(log_folder_path:str, 
+
+def __merge_one_day_logs_to_csv(log_folder_path:str, 
 								target_date:datetime,
 								grep_keyword:str,
 								max_character_count:int,
 								csv_file_path:str):
-	"""指定されたフォルダ内の全てのログファイルに対して、タイムスタンプとログ文字列を分離し、csvファイルに出力"""
+	"""指定フォルダ内の全てのログファイルに対して、対象日のログをマージし、csvファイルに出力"""
 
 	write_log("parse_logs_to_csv() start")
 
-	share_out_lines = SharedOutLines() # スレッド間共有 出力行配列
+	shared_merge_lines = SharedMergeLines() # スレッド間共有 出力行配列
 
 	threads = []
 	for file_name in os.listdir(log_folder_path):
 		# 対象ファイル毎にスレッドを分けて実行
 		file_path = os.path.join(log_folder_path, file_name)
 		thread = threading.Thread(target=__parse_log_data_by_files,
-									args=(	share_out_lines,
+									args=(	shared_merge_lines,
 											file_path,
 											target_date,
 											grep_keyword,
@@ -135,7 +139,7 @@ def __parse_one_day_logs_to_csv(log_folder_path:str,
 	for thread in threads:
 		thread.join()
 
-	out_lines = share_out_lines.get_out_lines()
+	out_lines = shared_merge_lines.get_merge_lines()
 
 	# タイムスタンプでソート 
 	out_lines = sorted(out_lines, key=lambda x: x[0])
@@ -162,51 +166,51 @@ def __parse_one_day_logs_to_csv(log_folder_path:str,
 		write_log("parse_logs_to_csv() end success")
 
 
-def __parse_log_data_by_files(out_lines: SharedOutLines,
-							  file_path:str,
+def __parse_log_data_by_files(shared_merge_lines: SharedMergeLines,
+							  log_file_path:str,
 							  target_date:datetime,
 							  grep_keyword:str,
 							  max_character_count:int):
 	"""ファイルからログデータを解析"""
 
-	write_log("parse_timestamp_by_files() file:" + file_path, LogLevel.D)
+	write_log("parse_timestamp_by_files() file:" + log_file_path, LogLevel.D)
 
-	if OUT_SYMBLE_PRE_WORD in os.path.basename(file_path):
-		write_log("skip symboled file:" + file_path)
+	if OUT_SYMBLE_PRE_WORD in os.path.basename(log_file_path):
+		write_log("skip symboled file:" + log_file_path)
 		return
 
-	if DEBUG_LOG_PATH in os.path.basename(file_path):
-		write_log("skip debug file:" + file_path)
+	if DEBUG_LOG_PATH in os.path.basename(log_file_path):
+		write_log("skip debug file:" + log_file_path)
 		return
 
-	if not file_path.endswith((".log", ".txt")):
-		write_log("not support file:" + file_path)
+	if not log_file_path.endswith((".log", ".txt")):
+		write_log("not support file:" + log_file_path)
 		return
 
-	write_log("target file:" + file_path)
-	with open(file_path, "r") as f:
+	write_log("target file:" + log_file_path)
+	with open(log_file_path, "r") as f:
 
 		try:
 			target_count = 0
-			file_name = os.path.basename(file_path)
+			file_name = os.path.basename(log_file_path)
 
 			# ファイル名で対象外が判明している場合は処理しない
-			file_timestamp = __get_datetime_by_file_name(file_name)
+			file_timestamp = get_datetime_by_str(file_name)
 			if file_timestamp :
-				if __is_target_log(file_timestamp, target_date) == False:
-					write_log("not target date file:" + file_path)
+				if is_same_day(file_timestamp, target_date) == False:
+					write_log("not target date file:" + log_file_path)
 					return
 
 			for line in f:
 				# 行解析
-				parsed = __parse_log_line(line,
-										 target_date,
-										 file_name, 
-										 grep_keyword, 
-										 max_character_count, 
-										 file_timestamp)
-				if parsed:
-					out_lines.increment(parsed)
+				parsed_line = __parse_log_line(line,
+											 target_date,
+											 file_name, 
+											 grep_keyword, 
+											 max_character_count, 
+										 	 file_timestamp)
+				if parsed_line:
+					shared_merge_lines.increment(parsed_line)
 					if target_count == 0:
 						target_count += 1
 				else:
@@ -218,17 +222,9 @@ def __parse_log_data_by_files(out_lines: SharedOutLines,
 			write_log("error:" + str(e), LogLevel.E)
 
 
-def __get_datetime_by_file_name(file_name) -> datetime:
-	"""ファイル名のyyyymmdd形式文字から日付を取り出す"""
-	match = re.search(r'\d{8}', file_name)
-	if match:
-		return datetime.strptime(match.group(), '%Y%m%d')
-	else:
-		return None
-
 # 正規表現によるタイムスタンプの抽出
 # 日付：YYYY.MM.DD  YYYY-MM-DD  YYYY/MM/DD  yy.MM.DD  yy-MM-DD  yy/MM/DD に対応
-# 時刻：hh:mm:ss に対応
+# 時刻：hh:mm:ss に対応 ミリ秒も対応
 # 日付と時刻の間は半角スペース
 TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
@@ -239,7 +235,7 @@ def __parse_log_line(log_line: str,
 					 grep_keyword:str, 
 					 max_character_count:int,
 					 file_timestamp: Optional[datetime]):
-	"""ログ１行を解析　タイムスタンプとログ文字列とエラー状況を分離し、リストに格納"""
+	"""ログ１行を解析　タイムスタンプとログ文字列とキーワードを分離し、リストに格納"""
 
 	write_log(f"parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
 
@@ -248,21 +244,21 @@ def __parse_log_line(log_line: str,
 		return None
 
 	if file_timestamp:  # ファイル名に日付が付いているケース
-		match = TIMESTAMP_TIME_PATTERN.search(log_line)
+		match = TIMESTAMP_TIME_PATTERN.search(log_line[:32])
 		if not match:
 			return None
 
-		timestamp = __combine_time_str_to_datetime(file_timestamp, match.group())
+		timestamp = combine_time_str_to_datetime(file_timestamp, match.group())
 
 	else:  # ファイル名に日付は付いていないケース
-		match = TIMESTAMP_PATTERN.search(log_line)
+		match = TIMESTAMP_PATTERN.search(log_line[:32])
 		if not match:
 			return None
 
-		timestamp = __datetime_by_text(match.group())
+		timestamp = datetime_by_text(match.group())
 
 	# 対象日以外は出力しない
-	if not __is_target_log(timestamp, target_date):
+	if not is_same_day(timestamp, target_date):
 		return None
 
 	# UTF-8 文字列にする  文字数は指定数にする
@@ -280,66 +276,6 @@ def __parse_log_line(log_line: str,
 	write_log(f"parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
 	return [timestamp, file_name, key_word, log_string_utf8]
 
-def __datetime_by_text(timestamp_str:str) -> datetime:
-	"""タイムスタンプ文字列を datetime 型に変換"""
-
-	try:
-		is_year_short = not timestamp_str[:4].isdigit()		# 2桁西暦対応
-		datetime_length = 14 if not is_year_short else 12 
-
-		# 区切り文字を全て取り除く
-		timestamp_str = timestamp_str.replace('/', '').replace('-', '').replace(':', '').replace('.', '').replace(' ', '')
-
-		# datetimeオブジェクトを作成
-		if is_year_short:
-			timestamp = datetime.strptime(timestamp_str[:datetime_length], '%y%m%d%H%M%S')
-		else:
-			timestamp = datetime.strptime(timestamp_str[:datetime_length], '%Y%m%d%H%M%S')
-
-		# ミリ秒を加算
-		timestamp = __add_milli_sec_ifneed(timestamp, timestamp_str, datetime_length)
-
-		return timestamp
-
-	except ValueError as e:
-		write_log("datetime_by_text error:" + str(e), LogLevel.E)
-		return None
-
-
-def __combine_time_str_to_datetime(datetime, time_str) -> datetime:
-	"""タイムスタンプ文字列を datetime 型に変換"""
-
-	try:
-		time_length = 6
-
-		# 区切り文字を全て取り除く
-		timestamp_str = time_str.replace(':', '').replace('.', '')
-
-		# datetime型に変換
-		tm = datetime.strptime(timestamp_str[:time_length], '%H%M%S').time()
-		timestamp = datetime.combine(datetime, tm)
-
-		# ミリ秒を加算
-		timestamp = __add_milli_sec_ifneed(timestamp, timestamp_str, time_length)
-
-		return timestamp
-
-	except ValueError as e:
-		write_log("combine_time_str_to_datetime error:" + str(e), LogLevel.E)
-		return None
-
-def __add_milli_sec_ifneed(datetime:datetime, timestamp_str, milli_sec_pos) -> datetime:
-	"""必要に応じてミリ秒を加算する"""
-
-	MICRO_SEC_DIGIT = 6	# マイクロ秒で加算することに注意
-
-	if (len(timestamp_str) > milli_sec_pos):
-		micro_sec_str = timestamp_str[milli_sec_pos:]
-		expo = MICRO_SEC_DIGIT - len(micro_sec_str)	# べき乗値
-		micro_sec_value = int(micro_sec_str) * (10 ** max(0, min(expo, MICRO_SEC_DIGIT)))
-		datetime = datetime.replace(microsecond=micro_sec_value)
-
-	return datetime
 
 def __encode_to_utf8(some_string):
 	"""文字列をUTF8にエンコード"""
@@ -353,23 +289,6 @@ def __encode_to_utf8(some_string):
 
 	return some_string
 
-
-def __is_target_log(timestamp, target_date:datetime):
-	"""対象日付か判定"""
-
-	if timestamp is None or not isinstance(timestamp, datetime):
-		return False
-
-	if (timestamp.year != target_date.year):
-		return False
-
-	if (timestamp.month != target_date.month):
-		return False
-
-	if (timestamp.day != target_date.day):
-		return False
-
-	return True
 
 def __make_csv_path(csv_folder_path:str, target_date:datetime):
 	"""CSVファイルパスを作成"""

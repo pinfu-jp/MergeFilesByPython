@@ -11,15 +11,15 @@ excludes = []
 # 実行ファイルの設定
 exe = Executable(
     script='main.py',  # 実行ファイルとなるスクリプト
-    targetName='ParseLogs.exe',  # 出力ファイル名
+    targetName='MergeLogs.exe',  # 出力ファイル名
     base=None  # コンソールアプリケーションとしてビルド
 )
 
 # セットアップ実行で exe作成
 setup(
-    name='ParseLogs',
+    name='MergeLogs',
     version='0.1',
-    description='Parse some log files',
+    description='Parse logs And Merge to csv file',
     options={
         'build_exe': {
             'packages': packages,

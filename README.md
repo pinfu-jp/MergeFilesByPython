@@ -39,19 +39,19 @@ python .\setup.py build
 ### pythonコマンドで実行
 
 ```
-python .\main.py .\ParseLogs.json
+python .\main.py .\MergeLogs.json
 ```
 
 
 ### ビルドした exe を実行
 
-* .\build\exe.win-amd64-3.11\ParseLogs.exe をダブルクリック
-* JSONファイル選択画面で ParseLogs.json を選択
+* .\build\exe.win-amd64-3.11\MergeLogs.exe をダブルクリック
+* JSONファイル選択画面で MergeLogs.json を選択
 
 #### コマンドラインで exe 実行
 
 ```
-.\build\exe.win-amd64-3.11\ParseLogs.exe .\ParseLogs.json
+.\build\exe.win-amd64-3.11\MergeLogs.exe .\MergeLogs.json
 ```
 
 
@@ -59,4 +59,4 @@ python .\main.py .\ParseLogs.json
 
 ## エラー発生時の調査方法
 
-* ParseLogs.log にログが出力されるので、err などが残っていないかを確認してください
+* MergeLogs.log にログが出力されるので、err などが残っていないかを確認してください

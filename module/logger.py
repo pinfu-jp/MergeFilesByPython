@@ -27,7 +27,7 @@ class Logger:
 			cls._instance = super().__new__(cls)
 
 			# ロガーを作成する
-			logger = logging.getLogger('parse_logs_logger')
+			logger = logging.getLogger(f"{APP_NAME}")
 			logger.setLevel(logging.DEBUG)
 
 			# ログのフォーマットを設定する

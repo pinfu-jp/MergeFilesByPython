@@ -5,10 +5,11 @@ import random
 import time
 import threading
 
-from module.parse_logs_to_csv import parse_logs_by_json
+from module.__init__ import APP_NAME
+from module.merge_logs_by_json import merge_logs_by_json
 
-class TestParseLogs(unittest.TestCase):
-	"""ParseLogs ユニットテスト"""
+class TestMergeLogs(unittest.TestCase):
+	"""MergeLogs ユニットテスト"""
 
 	def test_sys_path(self):
 		import sys; print(sys.path)
@@ -19,10 +20,10 @@ class TestParseLogs(unittest.TestCase):
 		directory = "./test_directory"
 		self.__prepare_log_test(directory)
 
-		json = "./ParseLogs.json"
+		json = f"./{APP_NAME}.json"
 
 		# parse_logs_by_json テスト
-		parse_logs_by_json(json)
+		merge_logs_by_json(json)
 
 		# テスト後に作成したファイルを削除
 		# os.remove(test_log_file)
