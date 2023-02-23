@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 
 # test
-test_directory/*.*
-out_directory/*.*
+test_directory/*
+out_directory/*

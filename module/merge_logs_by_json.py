@@ -12,14 +12,12 @@ from enum import Enum
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 from module.datetime_util import \
 	datetime_by_text, combine_time_str_to_datetime,\
-	is_same_day, get_datetime_by_str
-
-OUT_SYMBLE_PRE_WORD = '●'
-OUT_CSV_NAME = OUT_SYMBLE_PRE_WORD + 'parsed_log'
+	is_same_day, get_datetime_by_str, get_yyyymmdd_by_datetime
 
 DEF_GO_BACK_COUNT = 5
 DEF_ERR_TEXT_PATTERN = "err|except|エラー|warn|警告"
 DEF_MAX_CHARACTER_COUNT = 256
+DEF_OUT_FILE_SYMBOL = "mergedlog"
 
 class JSON_KEY(Enum):
 	"""JSONファイルのキー定義"""
@@ -30,7 +28,7 @@ class JSON_KEY(Enum):
 	go_back_days = '遡る日数'
 	grep_keyword = '抽出キーワード（正規表現）'
 	max_words_per_line = '1行当たりの最大出力文字数'
-	debug_path = 'debug_path'
+	out_file_symbol = '出力ファイル名'
 
 
 def merge_logs_by_json(json_path):
@@ -44,7 +42,7 @@ def merge_logs_by_json(json_path):
 
 	# 対象日付が未指定なら本日を指定する
 	if not JSON_KEY.target_ymd.value in json_data:
-		json_data[JSON_KEY.target_ymd.value] = __get_yyyymmdd(time.localtime())
+		json_data[JSON_KEY.target_ymd.value] = get_yyyymmdd_by_datetime(time.localtime())
 
 	__merge_logs_to_csv(
 		json_data[JSON_KEY.log_folder.value],
@@ -52,11 +50,12 @@ def merge_logs_by_json(json_path):
 		json_data[JSON_KEY.target_ymd.value],
 		json_data[JSON_KEY.go_back_days.value],
 		json_data[JSON_KEY.grep_keyword.value],
-		json_data[JSON_KEY.max_words_per_line.value]
+		json_data[JSON_KEY.max_words_per_line.value],
+		json_data[JSON_KEY.out_file_symbol.value]
 		)
 
-	elapsed_sec_time = time.time() - start_time
-	write_log(f"merge_logs_by_json end  csv_folder:{json_data[JSON_KEY.csv_folder.value]} time: {elapsed_sec_time:.2f} sec")
+	waited_sec_time = time.time() - start_time
+	write_log(f"merge_logs_by_json end  csv_folder:{json_data[JSON_KEY.csv_folder.value]} time: {waited_sec_time:.2f} sec")
 
 	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
 
@@ -68,30 +67,38 @@ def __merge_logs_to_csv(log_folder_path:str,
 						target_yyyymmdd:int, 
 						go_back_day_count:int = DEF_GO_BACK_COUNT, 
 						grep_keyword:str = DEF_ERR_TEXT_PATTERN,
-						max_character_count:int = DEF_MAX_CHARACTER_COUNT):
+						max_character_count:int = DEF_MAX_CHARACTER_COUNT,
+						out_file_symbol:str = DEF_OUT_FILE_SYMBOL):
 	"""指定されたフォルダ内のログファイル群を解析し、マージして日単位にcsvファイルに出力"""
 
+	write_log("__merge_logs_to_csv() start")
+
+	log_folder_path = os.path.abspath(log_folder_path)
+	csv_folder_path = os.path.abspath(csv_folder_path)
 	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
 
-	threads = []
+	daily_threads = []
 	for i in range(0, go_back_day_count):
 		# 対象日毎にスレッドを分けて実行
 		target_date = target_day - timedelta(days=i)
-		csv_path = __make_csv_path(csv_folder_path, target_date)
+		csv_path = __make_csv_path(csv_folder_path, out_file_symbol, target_date)
 		thread = threading.Thread(target=__merge_one_day_logs_to_csv,
 						 			args=(	log_folder_path,
 											target_date,
 											grep_keyword,
 											max_character_count,
+											out_file_symbol,
 											csv_path))
-		threads.append(thread)
+		daily_threads.append(thread)
 
-		write_log("start thread target_date:" + str(target_date))
+		write_log("start daily thread target:" + target_date.strftime('%Y%m%d'))
 		thread.start()
 
 	# 全スレッドが終了するまでメインスレッドを待機
-	for thread in threads:
+	for thread in daily_threads:
 		thread.join()
+
+	write_log("__merge_logs_to_csv() end")
 
 
 class SharedMergeLines:
@@ -113,14 +120,15 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 								target_date:datetime,
 								grep_keyword:str,
 								max_character_count:int,
+								out_file_symbol:str,
 								csv_file_path:str):
 	"""指定フォルダ内の全てのログファイルに対して、対象日のログをマージし、csvファイルに出力"""
 
-	write_log("parse_logs_to_csv() start")
+	write_log("__merge_one_day_logs_to_csv() start")
 
 	shared_merge_lines = SharedMergeLines() # スレッド間共有 出力行配列
 
-	threads = []
+	file_threads = []
 	for file_name in os.listdir(log_folder_path):
 		# 対象ファイル毎にスレッドを分けて実行
 		file_path = os.path.join(log_folder_path, file_name)
@@ -129,14 +137,15 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 											file_path,
 											target_date,
 											grep_keyword,
-											max_character_count))
-		threads.append(thread)
+											max_character_count,
+											out_file_symbol))
+		file_threads.append(thread)
 
-		write_log("start thread target_date:" + str(target_date))
+		write_log("start file thread target:" + str(target_date))
 		thread.start()
 
 	# 全スレッドが終了するまでメインスレッドを待機
-	for thread in threads:
+	for thread in file_threads:
 		thread.join()
 
 	out_lines = shared_merge_lines.get_merge_lines()
@@ -163,20 +172,21 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 				# writer.writerow([line[i]])
 			# writer.writerow(line)
 		writer.writerows(out_lines)
-		write_log("parse_logs_to_csv() end success")
+		write_log("__merge_one_day_logs_to_csv() end success")
 
 
 def __parse_log_data_by_files(shared_merge_lines: SharedMergeLines,
 							  log_file_path:str,
 							  target_date:datetime,
 							  grep_keyword:str,
-							  max_character_count:int):
+							  max_character_count:int,
+							  out_file_symbol:str):
 	"""ファイルからログデータを解析"""
 
-	write_log("parse_timestamp_by_files() file:" + log_file_path, LogLevel.D)
+	write_log("__parse_log_data_by_files() file:" + log_file_path, LogLevel.D)
 
-	if OUT_SYMBLE_PRE_WORD in os.path.basename(log_file_path):
-		write_log("skip symboled file:" + log_file_path)
+	if out_file_symbol in os.path.basename(log_file_path):
+		write_log("skip output file:" + log_file_path)
 		return
 
 	if DEBUG_LOG_PATH in os.path.basename(log_file_path):
@@ -237,7 +247,7 @@ def __parse_log_line(log_line: str,
 					 file_timestamp: Optional[datetime]):
 	"""ログ１行を解析　タイムスタンプとログ文字列とキーワードを分離し、リストに格納"""
 
-	write_log(f"parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
+	write_log(f"__parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
 
 	# 引数チェック
 	if not log_line or not file_name:
@@ -273,7 +283,7 @@ def __parse_log_line(log_line: str,
 	if len(log_string_utf8) > max_character_count:
 		log_string_utf8 = log_string_utf8[:max_character_count] + "..."
 
-	write_log(f"parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
+	write_log(f"__parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
 	return [timestamp, file_name, key_word, log_string_utf8]
 
 
@@ -290,10 +300,9 @@ def __encode_to_utf8(some_string):
 	return some_string
 
 
-def __make_csv_path(csv_folder_path:str, target_date:datetime):
+def __make_csv_path(csv_folder_path:str, out_file_symbol:str, target_date:datetime):
 	"""CSVファイルパスを作成"""
-	return os.path.join(csv_folder_path, OUT_CSV_NAME + "_" + target_date.strftime('%Y%m%d') + ".csv")
-    # return os.path.join(csv_folder_path, f"{OUT_CSV_NAME}_{target_date.strftime('%Y%m%d')}.csv")
+	return os.path.join(csv_folder_path, out_file_symbol + "_" + target_date.strftime('%Y%m%d') + ".csv")
 
 
 def __grep_keyword(log_string, grep_keyword):
@@ -306,10 +315,3 @@ def __grep_keyword(log_string, grep_keyword):
 		return ""
 
 
-def __get_yyyymmdd(date:datetime):
-	"""西暦年月日の8桁数値を生成"""
-	year = date.tm_year
-	month = date.tm_mon
-	day = date.tm_mday
-	date_str = f"{year:04}{month:02}{day:02}"
-	return int(date_str)

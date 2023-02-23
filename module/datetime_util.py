@@ -1,5 +1,6 @@
-from datetime import datetime
 import re
+from datetime import datetime
+from time import struct_time
 
 from module.logger import write_log, LogLevel
 
@@ -92,3 +93,12 @@ def get_datetime_by_str(file_name, format='%Y%m%d') -> datetime:
 		return datetime.strptime(match.group(), format)
 	else:
 		return None
+
+
+def get_yyyymmdd_by_datetime(time:struct_time):
+	"""西暦年月日の8桁数値を生成"""
+	year = time.tm_year
+	month = time.tm_mon
+	day = time.tm_mday
+	date_str = f"{year:04}{month:02}{day:02}"
+	return date_str
