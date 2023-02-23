@@ -64,7 +64,7 @@ class Logger:
 			self.logger.debug(log_str)
 		elif (level == LogLevel.I):
 			self.logger.info(log_str)
-		elif (level == LogLevel.w):
+		elif (level == LogLevel.W):
 			self.logger.warning(log_str)
 		elif (level == LogLevel.E):
 			self.logger.error(log_str)

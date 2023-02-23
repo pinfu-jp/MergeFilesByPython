@@ -33,6 +33,9 @@ class JSON_KEY(Enum):
 def parse_logs_by_json(json_path):
 	"""JSON設定に従ったログ解析"""
 
+	write_log(f"parse_logs_by_json start json:{json_path}")
+	start_time = time.time()
+
 	with open(json_path, mode='r', encoding='utf-8') as f:
 		json_data = json.load(f)
 
@@ -48,6 +51,9 @@ def parse_logs_by_json(json_path):
 		json_data[JSON_KEY.grep_keyword.value],
 		json_data[JSON_KEY.max_words_per_line.value]
 		)
+
+	elapsed_sec_time = time.time() - start_time
+	write_log(f"parse_logs_by_json end  csv_folder:{json_data[JSON_KEY.csv_folder.value]} time: {elapsed_sec_time:.2f} sec")
 
 	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
 
