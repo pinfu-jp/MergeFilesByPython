@@ -158,7 +158,7 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 		__export_out_line_to_csv(shared_merge_lines.get_merge_lines(), csv_file_path)
 
 	except Exception as e:
-		write_log(f"__merge_one_day_logs_to_csv() 例外発生:{str(e)}")
+		write_log(f"__merge_one_day_logs_to_csv() 例外発生:{str(e)}", LogLevel.E)
 
 
 def __export_out_line_to_csv(out_line, csv_file_path):
@@ -249,7 +249,7 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 						break
 
 	except Exception as e:
-		write_log(f"__parse_log_file() 例外発生:{str(e)}")
+		write_log(f"__parse_log_file() 例外発生:{str(e)}", LogLevel.E)
 
 
 
