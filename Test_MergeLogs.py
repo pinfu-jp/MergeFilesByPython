@@ -34,13 +34,14 @@ class TestMergeLogs(unittest.TestCase):
 		test_log_file = directory + '/' + 'test.log'
 		test2_log_file = directory + '/' + 'test2.log'
 		test3_log_file = directory + '/' + 'test3.log'
-		test4_log_file = directory + '/' + 'test4_20230215.log'
-		test5_log_file = directory + '/' + 'test5_20240215.log'
+		test4_log_file = directory + '/' + 'test4_20230221.log'
+		test5_log_file = directory + '/' + 'test5_20240221.log'
+		test6_log_file = directory + '/' + 'test6_230222.log'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
 			f.write('2023-12-31 14:51:12 ハイフンログ\n')
-			f.write('2023.02.15 14:51:12.100 ドットログ\n')
+			f.write('2023.02.23 14:51:12.100 ドットログ\n')
 			f.write('2022/12/31 14:51:12 log message2\n')
 			f.write('2022/12/31 14:51:11 log message1\n')
 
@@ -48,23 +49,27 @@ class TestMergeLogs(unittest.TestCase):
 			f.write('2021-11-11 14:51:12 test2 ハイフンログ\n')
 			f.write('2022/10/10 09:51:11 test2 log message1\n')
 			f.write('[2022/12/31 14:51:13.21] test2 log message2\n')
-			f.write('2023.02.15 14:51:11 test2 2023.01.11 ドットログ\n')
+			f.write('2023.2.21 14:51:11 test2 2023.01.11 ドットログ\n')
 
 		with open(test3_log_file, 'w') as f:
 			f.write('21-01-11 14:51:12 test3 ハイフンログ\n')
 			f.write('22/01/10 09:51:11 test3 log message1\n')
 			f.write('[22/01/31 14:51:13] test3 log message2\n')
-			f.write('23.02.13 14:51:11.2 test3 2023.01.11 ドットログエラーです\n')
-			f.write('23.02.14 14:51:11 test3 2023.01.11 ドットログあああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ\n')
-			f.write('23.02.15 14:51:11 test3 2023.01.11 ドットログerror\n')
+			f.write('23.02.23 14:51:11.2 test3 2023.01.11 ドットログエラーです\n')
+			f.write('23.2.24 14:51:11 test3 2023.01.11 ドットログあああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ\n')
+			f.write('23.02.25 14:51:11 test3 2023.01.11 ドットログerror\n')
 
 		with open(test4_log_file, 'w') as f:
 			f.write('21:51:12 test4 exception null pointer\n')
 			f.write('22:51:11.800 test4 log message1\n')
 
 		with open(test5_log_file, 'w') as f:
-			f.write('21:51:12 test4 ハイフンログ\n')
-			f.write('22:51:11 test4 log message1\n')
+			f.write('21:51:12 test5 ハイフンログ\n')
+			f.write('22:51:11 test5 log message1\n')
+
+		with open(test6_log_file, 'w') as f:
+			f.write('09:11:12.123 test6 ハイフンログ\n')
+			f.write('9:15:1 test6 log message1\n')
 
 		self.__make_random_logs(directory)
 
@@ -77,7 +82,7 @@ class TestMergeLogs(unittest.TestCase):
 		threads = []
 		for i in range(file_count):
 
-			target_date = now - timedelta(days=i)
+			target_date = now - timedelta(days=(i % 3))
 
 			# ファイル毎にスレッドを分けて実行
 			test_log_file = directory + '/' + f'test_ramdom_{i}.log'

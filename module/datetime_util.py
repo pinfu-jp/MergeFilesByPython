@@ -88,11 +88,23 @@ def is_same_day(timestamp, target_date:datetime):
 
 def get_datetime_by_str(file_name, format='%Y%m%d') -> datetime:
 	"""文字列からyyyymmdd形式の日付を取り出す"""
-	match = re.search(r'\d{8}', file_name)
-	if match:
-		return datetime.strptime(match.group(), format)
-	else:
-		return None
+
+	try:
+		# 8桁または6桁の数字を抽出し、datetime変換できたら日付ありとする
+		match = re.search(r'\d{8}|\d{6}', file_name)
+		if not match:
+			return None
+
+		date_str = match.group()
+		if len(date_str) == 6:
+			# 6桁の日付文字列を8桁に変換する
+			date_str = '20' + date_str
+
+		return datetime.strptime(date_str, format)
+
+	except ValueError as e:
+		write_log(f"get_datetime_by_str() 例外:{str(e)}", LogLevel.W)
+		return None	# 日付に変換できない数字はここで処理
 
 
 def get_yyyymmdd_by_datetime(time:struct_time):

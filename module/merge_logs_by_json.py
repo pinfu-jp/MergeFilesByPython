@@ -101,6 +101,11 @@ def __merge_logs_to_csv(log_folder_path:str,
 	write_log("__merge_logs_to_csv() end")
 
 
+def __make_csv_path(csv_folder_path:str, out_file_symbol:str, target_date:datetime):
+	"""CSVファイルパスを作成"""
+	return os.path.join(csv_folder_path, out_file_symbol + "_" + target_date.strftime('%Y%m%d') + ".csv")
+
+
 class SharedMergeLines:
 	"""スレッド間共有 マージ行メモリ領域"""
 
@@ -185,7 +190,7 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 							  grep_keyword:str,
 							  max_character_count:int,
 							  out_file_symbol:str):
-	"""ログファイルからを解析"""
+	"""ログファイルを解析"""
 
 	try:
 		write_log("__parse_log_file() file:" + log_file_path, LogLevel.D)
@@ -223,12 +228,20 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 		write_log(f"__parse_log_file() 例外発生:{str(e)}", LogLevel.E)
 
 
-# 正規表現によるタイムスタンプの抽出
-# 日付：YYYY.MM.DD  YYYY-MM-DD  YYYY/MM/DD  yy.MM.DD  yy-MM-DD  yy/MM/DD に対応
-# 時刻：hh:mm:ss に対応 ミリ秒も対応
+# タイムスタンプ正規表現
+
+# 日付文字列の正規表現  西暦4桁,2桁に対応　区切文字：- . / に対応
+DATE_Y4_STR_RG_PATTERN = r'\d{4}[-./]\d{1,2}[-./]\d{1,2}'
+DATE_Y2_STR_REG_PATTERN = r'\d{2}[-./]\d{1,2}[-./]\d{1,2}'
+DATE_STR_REG_PATTERN = "(" + DATE_Y4_STR_RG_PATTERN + "|" + DATE_Y2_STR_REG_PATTERN + ")"
+
 # 日付と時刻の間は半角スペース
-TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
-TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
+
+# 時刻文字列の正規表現：hh:mm:ss に対応 ミリ秒に対応
+TIME_STR_REG_PATTERN = r'\d{1,2}:\d{1,2}:\d{1,2}(?:.\d{1,3})?'
+
+# TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
+# TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
 
 def __parse_log_line(log_line: str,
 					 target_date:datetime,
@@ -238,21 +251,23 @@ def __parse_log_line(log_line: str,
 					 file_timestamp: Optional[datetime]):
 	"""ログ１行を解析　タイムスタンプとログ文字列とキーワードを分離し、リストに格納"""
 
-	write_log(f"__parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
+	# write_log(f"__parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
 
 	# 引数チェック
 	if not log_line or not file_name:
 		return None
 
 	if file_timestamp:  # ファイル名に日付が付いているケース
-		match = TIMESTAMP_TIME_PATTERN.search(log_line[:32])
+		reg_time = re.compile(TIME_STR_REG_PATTERN)
+		match = reg_time.search(log_line[:32])
 		if not match:
 			return None
 
 		timestamp = combine_time_str_to_datetime(file_timestamp, match.group())
 
 	else:  # ファイル名に日付は付いていないケース
-		match = TIMESTAMP_PATTERN.search(log_line[:32])
+		reg_date_time = re.compile(DATE_STR_REG_PATTERN + " " + TIME_STR_REG_PATTERN)
+		match = reg_date_time.search(log_line[:32])
 		if not match:
 			return None
 
@@ -274,7 +289,7 @@ def __parse_log_line(log_line: str,
 	if len(log_string_utf8) > max_character_count:
 		log_string_utf8 = log_string_utf8[:max_character_count] + "..."
 
-	write_log(f"__parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
+	# write_log(f"__parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
 	return [timestamp, file_name, key_word, log_string_utf8]
 
 
@@ -289,11 +304,6 @@ def __encode_to_utf8(some_string):
 		return decoded_string.encode('utf-8')
 
 	return some_string
-
-
-def __make_csv_path(csv_folder_path:str, out_file_symbol:str, target_date:datetime):
-	"""CSVファイルパスを作成"""
-	return os.path.join(csv_folder_path, out_file_symbol + "_" + target_date.strftime('%Y%m%d') + ".csv")
 
 
 def __grep_keyword(log_string, grep_keyword):
