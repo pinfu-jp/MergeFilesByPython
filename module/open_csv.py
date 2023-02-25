@@ -22,5 +22,5 @@ def open_csv(csv_path):
 		workbook = excel.Workbooks.Open(target_file)
 		
 	except pywintypes.com_error as e:
-		write_log("Excel.exe が見つからなかったので標準ソフトで開く e:" + str(e), LogLevel.W)
+		write_log("Can not launch Excel.exe. So open as standard app e:" + str(e), LogLevel.W)
 		os.startfile(csv_path)
