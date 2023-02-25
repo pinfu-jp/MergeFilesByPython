@@ -168,27 +168,24 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 	try:
 		write_log(f"__merge_one_day_logs_to_csv() start target_date:{str(target_date)}")
 
+		file_threads = []
 		shared_merge_lines = SharedMergeLines() # スレッド間共有 出力行配列
 
-		file_threads = []
-		for file_name in os.listdir(log_folder_path):
-
-			file_path = os.path.join(log_folder_path, file_name)
-
-			if not __is_target_file(file_path, out_file_symbol):
-				continue
+		file_path_list = __get_log_file_path_list(log_folder_path, out_file_symbol)
+		for file_path in file_path_list:
 
 			# 対象ファイル毎にスレッドを分けて実行
 			thread = threading.Thread(target=__parse_log_file,
 										args=(	shared_merge_lines,
 												file_path,
+												log_folder_path,
 												target_date,
 												max_timestamp_words,
 												grep_keyword,
 												max_character_count))
 			file_threads.append(thread)
 			thread.start()
-			write_log(f"start thread id:{thread.ident} target file:{file_name}")
+			write_log(f"start thread id:{thread.ident} target file:{file_path}")
 
 		# 全スレッドが終了するまでメインスレッドを待機
 		for thread in file_threads:
@@ -199,6 +196,20 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 
 	except Exception as e:
 		write_log(f"__merge_one_day_logs_to_csv() 例外発生:{str(e)}", LogLevel.E)
+
+
+def __get_log_file_path_list(folder_path:str, out_file_symbol:str):
+	"""フォルダ内のファイルとサブフォルダ内のファイルを再帰的に取得する"""
+	file_list = []
+	# os.wolk がサブフォルダ内も検索します
+	for root, dirs, files in os.walk(folder_path):
+		for file_name in files:
+			file_path = os.path.join(root, file_name)
+
+			if __is_target_file(file_path, out_file_symbol):
+				file_list.append(file_path)
+
+	return file_list
 
 
 def __is_target_file(file_path:str, out_file_symbol:str):
@@ -222,6 +233,7 @@ def __is_target_file(file_path:str, out_file_symbol:str):
 
 def __parse_log_file(shared_merge_lines: SharedMergeLines,
 							  log_file_path:str,
+							  log_folder_path:str,
 							  target_date:datetime,
 							  max_timestamp_words:int,
 							  grep_keyword:str,
@@ -233,22 +245,22 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 
 		with open(log_file_path, "r") as f:
 
-			target_count = 0
-			file_name = os.path.basename(log_file_path)
-
 			# ファイル名で対象外が判明している場合は処理しない
-			file_timestamp = get_datetime_by_str(file_name)
+			file_timestamp = get_datetime_by_str(os.path.basename(log_file_path))
 			if file_timestamp :
 				if is_same_day(file_timestamp, target_date) == False:
 					write_log("not target date file:" + log_file_path)
 					return
+
+			target_count = 0
+			relative_path = os.path.relpath(log_file_path, log_folder_path)
 
 			for line in f:
 				# 行解析
 				parsed_line = __parse_log_line(line,
 											target_date,
 											max_timestamp_words,
-											file_name, 
+											relative_path, 
 											grep_keyword, 
 											max_character_count, 
 											file_timestamp)
@@ -280,7 +292,7 @@ TIME_STR_REG_PATTERN = r'\d{1,2}:\d{1,2}:\d{1,2}(?:.\d{1,3})?'
 def __parse_log_line(log_line: str,
 					 target_date:datetime,
 					 max_timestamp_words:int,
-					 file_name: str,
+					 relative_path: str,
 					 grep_keyword:str, 
 					 max_character_count:int,
 					 file_timestamp: Optional[datetime]):
@@ -289,7 +301,7 @@ def __parse_log_line(log_line: str,
 	# write_log(f"__parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
 
 	# 引数チェック
-	if not log_line or not file_name:
+	if not log_line or not relative_path:
 		return None
 
 	if file_timestamp:  # ファイル名に日付が付いているケース
@@ -325,7 +337,7 @@ def __parse_log_line(log_line: str,
 		log_string_utf8 = log_string_utf8[:max_character_count] + "..."
 
 	# write_log(f"__parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
-	return [timestamp, file_name, key_word, log_string_utf8]
+	return [timestamp, relative_path, key_word, log_string_utf8]
 
 
 def __encode_to_utf8(some_string):

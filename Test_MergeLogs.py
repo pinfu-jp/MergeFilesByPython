@@ -71,7 +71,18 @@ class TestMergeLogs(unittest.TestCase):
 			f.write('09:11:12.123 test6 ハイフンログ\n')
 			f.write('9:15:1 test6 log message1\n')
 
+		# 大量データ
 		self.__make_random_logs(directory)
+
+		# サブフォルダ
+		sub_dir = os.path.join(directory, "sublog")
+		os.mkdir(sub_dir)
+
+		test_sub_log_file = os.path.join(sub_dir, 'test_sub.log')
+
+        # テスト用のダミーログファイルを作成
+		with open(test_sub_log_file, 'w') as f:
+			f.write('2023/2/24 12:3:5 sub log message1\n')
 
 
 	def __make_random_logs(self, directory, file_count = 20, line_count=2000):
