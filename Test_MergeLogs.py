@@ -72,7 +72,7 @@ class TestMergeLogs(unittest.TestCase):
 			f.write('9:15:1 test6 log message1\n')
 
 		# 大量データ
-		self.__make_random_logs(directory)
+		self.__make_random_logs(directory, 10, 1000)
 
 		# サブフォルダ
 		sub_dir = os.path.join(directory, "sublog")
@@ -93,7 +93,8 @@ class TestMergeLogs(unittest.TestCase):
 		threads = []
 		for i in range(file_count):
 
-			target_date = now - timedelta(days=(i % 3))
+			# ５日間に複数のログが存在するようにする
+			target_date = now - timedelta(days=(i % 5))
 
 			# ファイル毎にスレッドを分けて実行
 			test_log_file = directory + '/' + f'test_ramdom_{i}.log'

@@ -15,11 +15,6 @@ from module.datetime_util import \
 	is_same_day, get_datetime_by_str, get_yyyymmdd_by_datetime, \
 	get_timestamp_str_by_datetime
 
-DEF_GO_BACK_COUNT = 5
-DEF_ERR_TEXT_PATTERN = "err|except|エラー|warn|警告"
-DEF_MAX_CHARACTER_COUNT = 256
-DEF_OUT_FILE_SYMBOL = "mergedlog"
-DEF_MAX_TIMESTAMP_WORDS = 32
 
 class JSON_KEY(Enum):
 	"""JSONファイルのキー定義"""
@@ -63,6 +58,12 @@ def merge_logs_by_json(json_path):
 
 # 以下、private 関数
 
+DEF_GO_BACK_COUNT = 5
+DEF_ERR_TEXT_PATTERN = "err|except|エラー|warn|警告"
+DEF_MAX_CHARACTER_COUNT = 256
+DEF_OUT_FILE_SYMBOL = "mergedlog"
+DEF_MAX_TIMESTAMP_WORDS = 32
+
 def __adjustJson(json_data):
 	"""JSON情報の補完"""
 
@@ -89,7 +90,7 @@ def __adjustJson(json_data):
 	if not JSON_KEY.max_words_per_line.value in json_data:
 		json_data[JSON_KEY.max_words_per_line.value] = DEF_MAX_CHARACTER_COUNT
 
-	if not JSON_KEY.out_file_symbol in json_data:
+	if not JSON_KEY.out_file_symbol.value in json_data:
 		json_data[JSON_KEY.out_file_symbol.value] = DEF_OUT_FILE_SYMBOL
 
 	if not JSON_KEY.max_timestamp_words.value in json_data:
