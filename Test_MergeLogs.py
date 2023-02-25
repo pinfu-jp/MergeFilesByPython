@@ -13,7 +13,7 @@ class TestMergeLogs(unittest.TestCase):
 
 	def test_parse_logs_by_json(self):
 
-		directory = "./test_directory"
+		directory = "./log"
 		self.__prepare_log_test(directory)
 
 		json = f"./{APP_NAME}.json"

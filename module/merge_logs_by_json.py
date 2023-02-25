@@ -66,6 +66,17 @@ def merge_logs_by_json(json_path):
 def __adjustJson(json_data):
 	"""JSON情報の補完"""
 
+	current_directory = os.getcwd()
+
+	# ログフォルダ未指定 ：カレントの log フォルダとする
+	if not JSON_KEY.log_folder.value in json_data:
+		json_data[JSON_KEY.log_folder.value] = os.path.join(current_directory, 'log')
+
+	# CSVフォルダ未指定 ：カレントの csv フォルダとする
+	if not JSON_KEY.csv_folder.value in json_data:
+		json_data[JSON_KEY.csv_folder.value] = os.path.join(current_directory, 'log')
+
+	# 対象日 未指定：本日 とする
 	if not JSON_KEY.target_ymd.value in json_data:
 		json_data[JSON_KEY.target_ymd.value] = get_yyyymmdd_by_datetime(time.localtime())
 
