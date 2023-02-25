@@ -69,7 +69,7 @@ def __merge_logs_to_csv(log_folder_path:str,
 						grep_keyword:str = DEF_ERR_TEXT_PATTERN,
 						max_character_count:int = DEF_MAX_CHARACTER_COUNT,
 						out_file_symbol:str = DEF_OUT_FILE_SYMBOL):
-	"""指定されたフォルダ内のログファイル群を解析し、マージして日単位にcsvファイルに出力"""
+	"""指定されたフォルダのログファイル群を解析し、日単位にマージしてcsvファイルとして出力"""
 
 	write_log("__merge_logs_to_csv() start")
 
@@ -124,32 +124,46 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 								csv_file_path:str):
 	"""指定フォルダ内の全てのログファイルに対して、対象日のログをマージし、csvファイルに出力"""
 
-	write_log("__merge_one_day_logs_to_csv() start")
+	try:
+		write_log("__merge_one_day_logs_to_csv() start")
 
-	shared_merge_lines = SharedMergeLines() # スレッド間共有 出力行配列
+		shared_merge_lines = SharedMergeLines() # スレッド間共有 出力行配列
 
-	file_threads = []
-	for file_name in os.listdir(log_folder_path):
-		# 対象ファイル毎にスレッドを分けて実行
-		file_path = os.path.join(log_folder_path, file_name)
-		thread = threading.Thread(target=__parse_log_data_by_files,
-									args=(	shared_merge_lines,
-											file_path,
-											target_date,
-											grep_keyword,
-											max_character_count,
-											out_file_symbol))
-		file_threads.append(thread)
+		file_threads = []
+		for file_name in os.listdir(log_folder_path):
 
-		write_log("start file thread target:" + str(target_date))
-		thread.start()
+			file_path = os.path.join(log_folder_path, file_name)
 
-	# 全スレッドが終了するまでメインスレッドを待機
-	for thread in file_threads:
-		thread.join()
+			if not __is_target_file(file_path, out_file_symbol):
+				continue
 
-	out_lines = shared_merge_lines.get_merge_lines()
+			# 対象ファイル毎にスレッドを分けて実行
+			thread = threading.Thread(target=__parse_log_file,
+										args=(	shared_merge_lines,
+												file_path,
+												target_date,
+												grep_keyword,
+												max_character_count,
+												out_file_symbol))
+			file_threads.append(thread)
 
+			write_log("start file thread target:" + str(target_date))
+			thread.start()
+
+		# 全スレッドが終了するまでメインスレッドを待機
+		for thread in file_threads:
+			thread.join()
+
+		# csv出力
+		__export_out_line_to_csv(shared_merge_lines.get_merge_lines(), csv_file_path)
+
+	except Exception as e:
+		write_log(f"__merge_one_day_logs_to_csv() 例外発生:{str(e)}")
+
+
+def __export_out_line_to_csv(out_line, csv_file_path):
+	"""出力行をCSVへエクスポート"""
+		
 	# タイムスタンプでソート 
 	out_lines = sorted(out_lines, key=lambda x: x[0])
 
@@ -172,35 +186,41 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 				# writer.writerow([line[i]])
 			# writer.writerow(line)
 		writer.writerows(out_lines)
-		write_log("__merge_one_day_logs_to_csv() end success")
+		write_log("__export_out_line_to_csv() success")
 
 
-def __parse_log_data_by_files(shared_merge_lines: SharedMergeLines,
+def __is_target_file(file_path:str, out_file_symbol:str):
+	"""対象ファイルか判定"""
+
+	if out_file_symbol in os.path.basename(file_path):
+		write_log("skip output file:" + file_path)
+		return False
+
+	if DEBUG_LOG_PATH in os.path.basename(file_path):
+		write_log("skip debug file:" + file_path)
+		return False
+
+	if not file_path.endswith((".log", ".txt")):
+		write_log("not support file:" + file_path)
+		return False
+
+	write_log("target file:" + file_path)
+	return True
+
+
+def __parse_log_file(shared_merge_lines: SharedMergeLines,
 							  log_file_path:str,
 							  target_date:datetime,
 							  grep_keyword:str,
 							  max_character_count:int,
 							  out_file_symbol:str):
-	"""ファイルからログデータを解析"""
+	"""ログファイルからを解析"""
 
-	write_log("__parse_log_data_by_files() file:" + log_file_path, LogLevel.D)
+	try:
+		write_log("__parse_log_file() file:" + log_file_path, LogLevel.D)
 
-	if out_file_symbol in os.path.basename(log_file_path):
-		write_log("skip output file:" + log_file_path)
-		return
+		with open(log_file_path, "r") as f:
 
-	if DEBUG_LOG_PATH in os.path.basename(log_file_path):
-		write_log("skip debug file:" + log_file_path)
-		return
-
-	if not log_file_path.endswith((".log", ".txt")):
-		write_log("not support file:" + log_file_path)
-		return
-
-	write_log("target file:" + log_file_path)
-	with open(log_file_path, "r") as f:
-
-		try:
 			target_count = 0
 			file_name = os.path.basename(log_file_path)
 
@@ -214,11 +234,11 @@ def __parse_log_data_by_files(shared_merge_lines: SharedMergeLines,
 			for line in f:
 				# 行解析
 				parsed_line = __parse_log_line(line,
-											 target_date,
-											 file_name, 
-											 grep_keyword, 
-											 max_character_count, 
-										 	 file_timestamp)
+											target_date,
+											file_name, 
+											grep_keyword, 
+											max_character_count, 
+											file_timestamp)
 				if parsed_line:
 					shared_merge_lines.increment(parsed_line)
 					if target_count == 0:
@@ -228,8 +248,10 @@ def __parse_log_data_by_files(shared_merge_lines: SharedMergeLines,
 						write_log("over target line :" + line[:max_character_count])
 						break
 
-		except ValueError as e:
-			write_log("error:" + str(e), LogLevel.E)
+	except Exception as e:
+		write_log(f"__parse_log_file() 例外発生:{str(e)}")
+
+
 
 
 # 正規表現によるタイムスタンプの抽出
