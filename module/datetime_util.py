@@ -102,3 +102,7 @@ def get_yyyymmdd_by_datetime(time:struct_time):
 	day = time.tm_mday
 	date_str = f"{year:04}{month:02}{day:02}"
 	return date_str
+
+def get_timestamp_str_by_datetime(time:datetime):
+	"""出力用タイムスタンプ文字列取得"""
+	return time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]	# マイクロ秒 → ミリ秒変換あり

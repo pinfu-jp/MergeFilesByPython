@@ -12,7 +12,8 @@ from enum import Enum
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 from module.datetime_util import \
 	datetime_by_text, combine_time_str_to_datetime,\
-	is_same_day, get_datetime_by_str, get_yyyymmdd_by_datetime
+	is_same_day, get_datetime_by_str, get_yyyymmdd_by_datetime, \
+	get_timestamp_str_by_datetime
 
 DEF_GO_BACK_COUNT = 5
 DEF_ERR_TEXT_PATTERN = "err|except|エラー|warn|警告"
@@ -90,9 +91,8 @@ def __merge_logs_to_csv(log_folder_path:str,
 											out_file_symbol,
 											csv_path))
 		daily_threads.append(thread)
-
-		write_log("start daily thread target:" + target_date.strftime('%Y%m%d'))
 		thread.start()
+		write_log(f"start thread id:{thread.ident} target date:{target_date.strftime('%Y%m%d')}")
 
 	# 全スレッドが終了するまでメインスレッドを待機
 	for thread in daily_threads:
@@ -125,7 +125,7 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 	"""指定フォルダ内の全てのログファイルに対して、対象日のログをマージし、csvファイルに出力"""
 
 	try:
-		write_log("__merge_one_day_logs_to_csv() start")
+		write_log(f"__merge_one_day_logs_to_csv() start target_date:{str(target_date)}")
 
 		shared_merge_lines = SharedMergeLines() # スレッド間共有 出力行配列
 
@@ -146,9 +146,8 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 												max_character_count,
 												out_file_symbol))
 			file_threads.append(thread)
-
-			write_log("start file thread target:" + str(target_date))
 			thread.start()
+			write_log(f"start thread id:{thread.ident} target file:{file_name}")
 
 		# 全スレッドが終了するまでメインスレッドを待機
 		for thread in file_threads:
@@ -159,34 +158,6 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 
 	except Exception as e:
 		write_log(f"__merge_one_day_logs_to_csv() 例外発生:{str(e)}", LogLevel.E)
-
-
-def __export_out_line_to_csv(out_line, csv_file_path):
-	"""出力行をCSVへエクスポート"""
-		
-	# タイムスタンプでソート 
-	out_lines = sorted(out_lines, key=lambda x: x[0])
-
-	# 最後にヘッダー行を足す
-	header_line = ["タイムスタンプ","ファイル名","キーワード","ログ内容"]
-	out_lines.insert(0, header_line)
-
-	# 親フォルダが存在しない場合にフォルダを再帰的に作成する
-	os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
-
-	# csv出力
-	with open(csv_file_path, "w", newline="", encoding='utf-8') as f:
-		writer = csv.writer(f)
-
-		for line in out_lines:
-			for i, val in enumerate(line):
-				if isinstance(line[i], datetime):
-					text = line[i].strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]	# マイクロ秒 → ミリ秒変換あり
-					line[i] = text	# 出力用文字列に置換
-				# writer.writerow([line[i]])
-			# writer.writerow(line)
-		writer.writerows(out_lines)
-		write_log("__export_out_line_to_csv() success")
 
 
 def __is_target_file(file_path:str, out_file_symbol:str):
@@ -250,8 +221,6 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 
 	except Exception as e:
 		write_log(f"__parse_log_file() 例外発生:{str(e)}", LogLevel.E)
-
-
 
 
 # 正規表現によるタイムスタンプの抽出
@@ -336,4 +305,30 @@ def __grep_keyword(log_string, grep_keyword):
 	else:
 		return ""
 
+def __export_out_line_to_csv(out_lines:list, csv_file_path:str):
+	"""出力行をCSVへエクスポート"""
 
+	write_log(f"__export_out_line_to_csv() start line count:{len(out_lines)} → path:{csv_file_path}")
+
+	# タイムスタンプでソート 
+	out_lines = sorted(out_lines, key=lambda x: x[0])
+
+	# 最後にヘッダー行を足す
+	header_line = ["タイムスタンプ","ファイル名","キーワード","ログ内容"]
+	out_lines.insert(0, header_line)
+
+	# 親フォルダが存在しない場合にフォルダを再帰的に作成する
+	os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
+
+	# csv出力
+	with open(csv_file_path, "w", newline="", encoding='utf-8') as f:
+		writer = csv.writer(f)
+
+		for line in out_lines:
+			for i, val in enumerate(line):
+				if isinstance(line[i], datetime):
+					line[i] = get_timestamp_str_by_datetime(line[i])
+				# writer.writerow([line[i]])
+			# writer.writerow(line)
+		writer.writerows(out_lines)
+		write_log("__export_out_line_to_csv() success")
