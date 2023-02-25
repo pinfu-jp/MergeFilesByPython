@@ -1,9 +1,10 @@
 {
-    "解析対象ログフォルダ": "C:\\dev\\github\\MergeFilesByPython\\test_directory",
-    "解析結果出力先フォルダ": "C:\\dev\\github\\MergeFilesByPython\\test_directory\\csv",
-    "解析対象日__": 20230222,
+    "解析対象ログフォルダ": ".\\test_directory",
+    "解析結果出力先フォルダ": ".\\test_directory\\csv",
+    "出力ファイル名":"merged_log",
+    "<解除中>解析対象日": 20230222,
     "遡る日数": 5,
 	"抽出キーワード（正規表現）":"err|except|エラー|warn|警告",
-	"1行当たりの最大出力文字数":128,
-    "出力ファイル名":"merged_log"
+	"1行当たりの最大出力文字数":256,
+    "タイムスタンプ抽出最大文字数":24
 }

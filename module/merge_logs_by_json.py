@@ -19,17 +19,19 @@ DEF_GO_BACK_COUNT = 5
 DEF_ERR_TEXT_PATTERN = "err|except|エラー|warn|警告"
 DEF_MAX_CHARACTER_COUNT = 256
 DEF_OUT_FILE_SYMBOL = "mergedlog"
+DEF_MAX_TIMESTAMP_WORDS = 32
 
 class JSON_KEY(Enum):
 	"""JSONファイルのキー定義"""
 
 	log_folder = '解析対象ログフォルダ'
 	csv_folder = '解析結果出力先フォルダ'
+	out_file_symbol = '出力ファイル名'
 	target_ymd = '解析対象日'
 	go_back_days = '遡る日数'
 	grep_keyword = '抽出キーワード（正規表現）'
 	max_words_per_line = '1行当たりの最大出力文字数'
-	out_file_symbol = '出力ファイル名'
+	max_timestamp_words = 'タイムスタンプ抽出最大文字数'
 
 
 def merge_logs_by_json(json_path):
@@ -41,9 +43,7 @@ def merge_logs_by_json(json_path):
 	with open(json_path, mode='r', encoding='utf-8') as f:
 		json_data = json.load(f)
 
-	# 対象日付が未指定なら本日を指定する
-	if not JSON_KEY.target_ymd.value in json_data:
-		json_data[JSON_KEY.target_ymd.value] = get_yyyymmdd_by_datetime(time.localtime())
+	__adjustJson(json_data)	# 設定不足をデフォルト値で補完
 
 	__merge_logs_to_csv(
 		json_data[JSON_KEY.log_folder.value],
@@ -52,7 +52,8 @@ def merge_logs_by_json(json_path):
 		json_data[JSON_KEY.go_back_days.value],
 		json_data[JSON_KEY.grep_keyword.value],
 		json_data[JSON_KEY.max_words_per_line.value],
-		json_data[JSON_KEY.out_file_symbol.value]
+		json_data[JSON_KEY.out_file_symbol.value],
+		json_data[JSON_KEY.max_timestamp_words.value],
 		)
 
 	waited_sec_time = time.time() - start_time
@@ -60,8 +61,29 @@ def merge_logs_by_json(json_path):
 
 	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
 
-
 # 以下、private 関数
+
+def __adjustJson(json_data):
+	"""JSON情報の補完"""
+
+	if not JSON_KEY.target_ymd.value in json_data:
+		json_data[JSON_KEY.target_ymd.value] = get_yyyymmdd_by_datetime(time.localtime())
+
+	if not JSON_KEY.go_back_days.value in json_data:
+		json_data[JSON_KEY.go_back_days.value] = DEF_GO_BACK_COUNT
+
+	if not JSON_KEY.grep_keyword.value in json_data:
+		json_data[JSON_KEY.grep_keyword.value] = DEF_ERR_TEXT_PATTERN
+
+	if not JSON_KEY.max_words_per_line.value in json_data:
+		json_data[JSON_KEY.max_words_per_line.value] = DEF_MAX_CHARACTER_COUNT
+
+	if not JSON_KEY.out_file_symbol in json_data:
+		json_data[JSON_KEY.out_file_symbol.value] = DEF_OUT_FILE_SYMBOL
+
+	if not JSON_KEY.max_timestamp_words.value in json_data:
+		json_data[JSON_KEY.max_timestamp_words.value] = DEF_MAX_TIMESTAMP_WORDS
+
 
 def __merge_logs_to_csv(log_folder_path:str, 
 						csv_folder_path:str, 
@@ -69,7 +91,8 @@ def __merge_logs_to_csv(log_folder_path:str,
 						go_back_day_count:int = DEF_GO_BACK_COUNT, 
 						grep_keyword:str = DEF_ERR_TEXT_PATTERN,
 						max_character_count:int = DEF_MAX_CHARACTER_COUNT,
-						out_file_symbol:str = DEF_OUT_FILE_SYMBOL):
+						out_file_symbol:str = DEF_OUT_FILE_SYMBOL,
+						max_timestamp_words:int = DEF_MAX_TIMESTAMP_WORDS):
 	"""指定されたフォルダのログファイル群を解析し、日単位にマージしてcsvファイルとして出力"""
 
 	write_log("__merge_logs_to_csv() start")
@@ -86,6 +109,7 @@ def __merge_logs_to_csv(log_folder_path:str,
 		thread = threading.Thread(target=__merge_one_day_logs_to_csv,
 						 			args=(	log_folder_path,
 											target_date,
+											max_timestamp_words,
 											grep_keyword,
 											max_character_count,
 											out_file_symbol,
@@ -123,6 +147,7 @@ class SharedMergeLines:
 
 def __merge_one_day_logs_to_csv(log_folder_path:str, 
 								target_date:datetime,
+								max_timestamp_words:int,
 								grep_keyword:str,
 								max_character_count:int,
 								out_file_symbol:str,
@@ -147,9 +172,9 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 										args=(	shared_merge_lines,
 												file_path,
 												target_date,
+												max_timestamp_words,
 												grep_keyword,
-												max_character_count,
-												out_file_symbol))
+												max_character_count))
 			file_threads.append(thread)
 			thread.start()
 			write_log(f"start thread id:{thread.ident} target file:{file_name}")
@@ -187,9 +212,9 @@ def __is_target_file(file_path:str, out_file_symbol:str):
 def __parse_log_file(shared_merge_lines: SharedMergeLines,
 							  log_file_path:str,
 							  target_date:datetime,
+							  max_timestamp_words:int,
 							  grep_keyword:str,
-							  max_character_count:int,
-							  out_file_symbol:str):
+							  max_character_count:int):
 	"""ログファイルを解析"""
 
 	try:
@@ -211,6 +236,7 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 				# 行解析
 				parsed_line = __parse_log_line(line,
 											target_date,
+											max_timestamp_words,
 											file_name, 
 											grep_keyword, 
 											max_character_count, 
@@ -221,7 +247,7 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 						target_count += 1
 				else:
 					if target_count > 0:	# 対象日を超えた
-						write_log("over target line :" + line[:max_character_count])
+						write_log("over target line :" + line[:32] + "...")
 						break
 
 	except Exception as e:
@@ -240,11 +266,9 @@ DATE_STR_REG_PATTERN = "(" + DATE_Y4_STR_RG_PATTERN + "|" + DATE_Y2_STR_REG_PATT
 # 時刻文字列の正規表現：hh:mm:ss に対応 ミリ秒に対応
 TIME_STR_REG_PATTERN = r'\d{1,2}:\d{1,2}:\d{1,2}(?:.\d{1,3})?'
 
-# TIMESTAMP_PATTERN = re.compile(r'\d{4}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?|\d{2}[-./]\d{2}[-./]\d{2} \d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
-# TIMESTAMP_TIME_PATTERN = re.compile(r'\d{2}:\d{2}:\d{2}(?:.\d{1,3})?')
-
 def __parse_log_line(log_line: str,
 					 target_date:datetime,
+					 max_timestamp_words:int,
 					 file_name: str,
 					 grep_keyword:str, 
 					 max_character_count:int,
@@ -259,7 +283,7 @@ def __parse_log_line(log_line: str,
 
 	if file_timestamp:  # ファイル名に日付が付いているケース
 		reg_time = re.compile(TIME_STR_REG_PATTERN)
-		match = reg_time.search(log_line[:32])
+		match = reg_time.search(log_line[:max_timestamp_words])
 		if not match:
 			return None
 
@@ -267,7 +291,7 @@ def __parse_log_line(log_line: str,
 
 	else:  # ファイル名に日付は付いていないケース
 		reg_date_time = re.compile(DATE_STR_REG_PATTERN + " " + TIME_STR_REG_PATTERN)
-		match = reg_date_time.search(log_line[:32])
+		match = reg_date_time.search(log_line[:max_timestamp_words])
 		if not match:
 			return None
 
@@ -277,7 +301,7 @@ def __parse_log_line(log_line: str,
 	if not is_same_day(timestamp, target_date):
 		return None
 
-	# UTF-8 文字列にする  文字数は指定数にする
+	# UTF-8 文字列にする
 	log_string = log_line.replace(match.group(), "").strip()
 	log_string_utf8 = __encode_to_utf8(log_string)
 
