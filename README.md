@@ -123,6 +123,36 @@
 
 <br>
 
+
+## 開発環境
+
+* VScode, sandbox を推奨
+* 参照ライブラリ
+  * 以下をインストールしてください
+  ```
+  Package                   Version
+  ------------------------- ---------
+  altgraph                  0.17.3
+  comtypes                  1.1.14
+  cx-Freeze                 6.14.1
+  cx-Logging                3.1.0
+  et-xmlfile                1.1.0
+  future                    0.18.3
+  lief                      0.12.3
+  openpyxl                  3.1.1
+  pefile                    2022.5.30
+  pip                       23.0
+  pyinstaller-hooks-contrib 2022.15
+  pywin32                   305
+  pywin32-ctypes            0.2.0
+  pywinauto                 0.6.8
+  setuptools                65.5.0
+  six                       1.16.0
+  wheel                     0.38.4
+  ```
+
+<br>
+
 ## ビルド方法
 
 * Windows向けに exe 化可能です
