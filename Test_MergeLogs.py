@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from module.__init__ import APP_NAME
 from module.merge_logs_by_json import merge_logs_by_json
+from module.datetime_util import get_timestamp_str_by_datetime
 
 class TestMergeLogs(unittest.TestCase):
 	"""MergeLogs ユニットテスト"""
@@ -122,10 +123,11 @@ class TestMergeLogs(unittest.TestCase):
 
 				for i in range(line_count):
 
-					target_date = self.__make_random_seconds(target_date)
+					# ミリ秒単位でランダムな時刻
+					target_date = self.__make_random_milliseconds(target_date)
 
 					# 現在時刻を取得し、文字列に変換する
-					timestamp = target_date.strftime("%Y-%m-%d %H:%M:%S")
+					timestamp = get_timestamp_str_by_datetime(target_date)
 
 					# ランダムな文字列を生成する
 					random_string = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=300))
@@ -138,9 +140,9 @@ class TestMergeLogs(unittest.TestCase):
 		except Exception as e:
 			assert e is None, "例外発生" 
 
-	def __make_random_seconds(self, time:datetime):
-		random_seconds = random.randint(1, 10)
-		return time + timedelta(seconds=random_seconds)
-
+	def __make_random_milliseconds(self, time: datetime):
+		random_milliseconds = random.randint(1, 1000)
+		return time + timedelta(milliseconds=random_milliseconds)
+	
 if __name__ == '__main__':
     unittest.main()

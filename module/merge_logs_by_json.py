@@ -369,7 +369,9 @@ def __export_out_line_to_csv(out_lines:list, csv_file_path:str):
 	write_log(f"__export_out_line_to_csv() start line count:{len(out_lines)} → path:{csv_file_path}")
 
 	# タイムスタンプでソート 
-	out_lines = sorted(out_lines, key=lambda x: x[0])
+	# out_lines = sorted(out_lines, key=lambda x: x[0])
+	out_lines = sorted(out_lines, key=lambda x: (x[0].timestamp(), x[0].microsecond))
+
 
 	# 最後にヘッダー行を足す
 	header_line = ["タイムスタンプ","ファイル名","キーワード","ログ内容"]
@@ -379,6 +381,7 @@ def __export_out_line_to_csv(out_lines:list, csv_file_path:str):
 	os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
 
 	# csv出力
+	# TODO: SJIS でないとExcelに都合が悪い。デフォはSJISにすること
 	with open(csv_file_path, "w", newline="", encoding='utf-8') as f:
 		writer = csv.writer(f)
 
