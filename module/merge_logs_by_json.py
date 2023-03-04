@@ -60,6 +60,8 @@ def merge_logs_by_json(json_path):
 	xlsx_path = os.path.join(out_path, f"{json_data[JSON_KEY.out_file_symbol.value]}.xlsx")
 	convert_csvs_to_xlsx(out_path, xlsx_path)
 
+	write_log(f"merge_logs_by_json end")
+
 	return out_path	# 出力先を示す
 
 # 以下、private 関数

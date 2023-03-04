@@ -52,22 +52,28 @@ def convert_csvs_to_xlsx(csv_folder, xlsx_file):
 
 def get_excel_ver():
     """Excelのバージョン取得"""
-    excel = win32com.client.Dispatch("Excel.Application")
-    ver = excel.Version
-    excel.Quit()
-
-    write_log(f"get_excel_ver :{ver}")
-
-    return ver
+    try:
+        excel = win32com.client.Dispatch("Excel.Application")
+        ver = excel.Version
+        excel.Quit()
+        write_log(f"get_excel_ver :{ver}")
+        return ver
+    except:
+        write_log("Excel is not installed.")
+        return 0
 
 
 def run_excel(file_path):
     """Excelを起動し、選択ファイルを開く"""
 
-    # ExcelでCSVファイルを開く
-    import win32com.client
-    excel = win32com.client.Dispatch("Excel.Application")
-    excel.Visible = True
-    workbook = excel.Workbooks.Open(file_path)
+    try:
+        import win32com.client
+        excel = win32com.client.Dispatch("Excel.Application")
+        excel.Visible = True
+        workbook = excel.Workbooks.Open(file_path)
+    except:
+        write_log("Excel is not installed.")
+        return
+
 
 
