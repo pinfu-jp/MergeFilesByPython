@@ -10,7 +10,7 @@ from typing import Optional
 from enum import Enum
 
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
-from module.excel_util import convert_csvs_to_xlsx
+from module.excel_util import convert_marged_csvs_to_xlsx
 from module.datetime_util import \
 	datetime_by_text, combine_time_str_to_datetime,\
 	is_same_day, get_datetime_by_str, get_yyyymmdd_by_datetime, \
@@ -58,7 +58,7 @@ def merge_logs_by_json(json_path):
 
 	# excelファイルに統合
 	xlsx_path = os.path.join(out_path, f"{json_data[JSON_KEY.out_file_symbol.value]}.xlsx")
-	convert_csvs_to_xlsx(out_path, xlsx_path)
+	convert_marged_csvs_to_xlsx(out_path, xlsx_path)
 
 	write_log(f"merge_logs_by_json end")
 

@@ -1,14 +1,20 @@
 import os
 import csv
 import openpyxl
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import Font
+from openpyxl.utils.cell import get_column_letter
+from openpyxl.styles import PatternFill, colors
 import win32com.client
 
 from module.logger import write_log
 
-def convert_csvs_to_xlsx(csv_folder, xlsx_file):
-    """CSVファイル群を1本のxlsxにまとめる"""
+COL_NO_TIMESTAMP = 1
+COL_NO_FILE_NAME = 2
+COL_NO_KEYWORD = 3
+COL_NO_LOG = 4
+
+
+def convert_marged_csvs_to_xlsx(csv_folder: str, xlsx_file: str):
+    """ログマージしたCSVファイル群を1本のxlsxにまとめる"""
 
     write_log(f"convert_csvs_to_xlsx csv folder:{csv_folder} to xlsx:{xlsx_file}")
 
@@ -27,20 +33,24 @@ def convert_csvs_to_xlsx(csv_folder, xlsx_file):
         sheet_title = os.path.splitext(os.path.basename(csv_file))[0]
         write_log(f"create_sheet :{sheet_title}")
         ws = wb.create_sheet(title=sheet_title)
+        
+        yellow_color = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
 
         # 行
-        for row_index, row in enumerate(data, start=1):
+        for row_no, row in enumerate(data, start=1):
             # 列
-            for col_index, cell_value in enumerate(row, start=1):
-                cell = ws.cell(row=row_index, column=col_index)
+            for col_no, cell_value in enumerate(row, start=1):
+                cell = ws.cell(row=row_no, column=col_no)
                 cell.value = cell_value
-                # # フォントを設定（オプション）
-                # cell.font = Font(name='ＭＳ Ｐゴシック', size=11)
+
+                if row_no > 1 and col_no == COL_NO_KEYWORD:
+                    if len(cell_value) > 0:
+                        cell.fill = yellow_color    # キーワードは強調する
 
         # カラム幅を調整
-        ws.column_dimensions['A'].width = 26
-        ws.column_dimensions['B'].width = 24
-        ws.column_dimensions['C'].width = 8
+        ws.column_dimensions[get_column_letter(COL_NO_TIMESTAMP)].width = 26
+        ws.column_dimensions[get_column_letter(COL_NO_FILE_NAME)].width = 24
+        ws.column_dimensions[get_column_letter(COL_NO_KEYWORD)].width = 12
 
     if wb['Sheet']:
         wb.remove(wb['Sheet']) # sheetは不要なので削除
