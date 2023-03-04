@@ -3,8 +3,8 @@ import os
 
 from module.merge_logs_by_json import merge_logs_by_json
 from module.select_folder import select_json_file
-from module.open_csv import open_csv
 from module.messagebox import show_message
+from module.excel_util import get_excel_ver, run_excel
 from module.logger import write_log, LogLevel
 
 
@@ -13,7 +13,6 @@ def main():
 
 	try:
 		write_log("main() start")
-
 
 		if len(sys.argv) > 1:
 			write_log("main param arg1:" + sys.argv[1])
@@ -28,10 +27,17 @@ def main():
 			return
 
 		# 解析実行
-		csv_folder_path = merge_logs_by_json(json_path)
+		out_folder_path = merge_logs_by_json(json_path)
 
-		# CSVファイルを開く
-		open_csv(csv_folder_path)
+		# Excelがあるならxlsxを開く
+		if get_excel_ver() > 0:
+			xlsx_files = [os.path.join(out_folder_path, f) for f in os.listdir(out_folder_path) if f.endswith('.xlsx')]
+			if len(xlsx_files) > 0:
+				run_excel(xlsx_files[0])
+				return
+
+		# フォルダを開く
+		os.startfile(out_folder_path)
 
 		write_log("main() end")
 

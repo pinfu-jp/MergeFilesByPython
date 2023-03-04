@@ -10,6 +10,7 @@ from typing import Optional
 from enum import Enum
 
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
+from module.excel_util import convert_csvs_to_xlsx
 from module.datetime_util import \
 	datetime_by_text, combine_time_str_to_datetime,\
 	is_same_day, get_datetime_by_str, get_yyyymmdd_by_datetime, \
@@ -20,7 +21,7 @@ class JSON_KEY(Enum):
 	"""JSONファイルのキー定義"""
 
 	log_folder = '解析対象ログフォルダ'
-	csv_folder = '解析結果出力先フォルダ'
+	out_folder = '解析結果出力先フォルダ'
 	out_file_symbol = '出力ファイル名'
 	target_ymd = '解析対象日'
 	go_back_days = '遡る日数'
@@ -42,7 +43,7 @@ def merge_logs_by_json(json_path):
 
 	__merge_logs_to_csv(
 		json_data[JSON_KEY.log_folder.value],
-		json_data[JSON_KEY.csv_folder.value],
+		json_data[JSON_KEY.out_folder.value],
 		json_data[JSON_KEY.target_ymd.value],
 		json_data[JSON_KEY.go_back_days.value],
 		json_data[JSON_KEY.grep_keyword.value],
@@ -52,9 +53,14 @@ def merge_logs_by_json(json_path):
 		)
 
 	waited_sec_time = time.time() - start_time
-	write_log(f"merge_logs_by_json end  csv_folder:{json_data[JSON_KEY.csv_folder.value]} time: {waited_sec_time:.2f} sec")
+	out_path = json_data[JSON_KEY.out_folder.value]
+	write_log(f"merge_logs_by_json end  out_folder:{out_path} time: {waited_sec_time:.2f} sec")
 
-	return json_data[JSON_KEY.csv_folder.value]	# 出力先を示す
+	# excelファイルに統合
+	xlsx_path = os.path.join(out_path, f"{json_data[JSON_KEY.out_file_symbol.value]}.xlsx")
+	convert_csvs_to_xlsx(out_path, xlsx_path)
+
+	return out_path	# 出力先を示す
 
 # 以下、private 関数
 
@@ -74,8 +80,8 @@ def __adjustJson(json_data):
 		json_data[JSON_KEY.log_folder.value] = os.path.join(current_directory, 'log')
 
 	# CSVフォルダ未指定 ：カレントの csv フォルダとする
-	if not JSON_KEY.csv_folder.value in json_data:
-		json_data[JSON_KEY.csv_folder.value] = os.path.join(current_directory, 'log')
+	if not JSON_KEY.out_folder.value in json_data:
+		json_data[JSON_KEY.out_folder.value] = os.path.join(current_directory, 'log')
 
 	# 対象日 未指定：本日 とする
 	if not JSON_KEY.target_ymd.value in json_data:
