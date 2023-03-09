@@ -20,18 +20,18 @@ def convert_marged_csvs_to_xlsx(csv_folder: str, xlsx_file: str):
     write_log(f"convert_csvs_to_xlsx csv folder:{csv_folder} to xlsx:{xlsx_file}")
 
     # CSVフォルダ内のすべてのCSVファイルを取得する
-    csv_files = [os.path.join(csv_folder, f) for f in os.listdir(csv_folder) if f.endswith('.csv')]
-    csv_files = sorted(csv_files, reverse=True)
+    csv_pathes = [os.path.join(csv_folder, f) for f in os.listdir(csv_folder) if f.endswith('.csv')]
+    csv_pathes = sorted(csv_pathes, reverse=True)
 
     # XLSXファイルを作成し、すべてのCSVファイルの内容を書き込む
     wb = openpyxl.Workbook()
 
-    for csv_file in csv_files:
-        with open(csv_file, 'r', encoding='utf-8') as f:
+    for csv_path in csv_pathes:
+        with open(csv_path, 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
             data = [row for row in reader]
 
-        timestamp = get_datetime_by_str(os.path.splitext(os.path.basename(csv_file))[0])
+        timestamp = get_datetime_by_str(os.path.splitext(os.path.basename(csv_path))[0])
         sheet_title = get_yyyymmdd_by_datetime(timestamp)
         write_log(f"create_sheet :{sheet_title}")
         ws = wb.create_sheet(title=sheet_title)
@@ -51,7 +51,7 @@ def convert_marged_csvs_to_xlsx(csv_folder: str, xlsx_file: str):
 
         # カラム幅を調整
         ws.column_dimensions[get_column_letter(COL_NO_TIMESTAMP)].width = 26
-        ws.column_dimensions[get_column_letter(COL_NO_FILE_NAME)].width = 24
+        ws.column_dimensions[get_column_letter(COL_NO_FILE_NAME)].width = 64
         ws.column_dimensions[get_column_letter(COL_NO_KEYWORD)].width = 12
 
     if wb['Sheet']:
