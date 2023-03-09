@@ -87,7 +87,7 @@ def is_same_day(timestamp, target_date:datetime):
 
 
 def get_datetime_by_str(file_name, format='%Y%m%d') -> datetime:
-	"""文字列からyyyymmdd形式の日付を取り出す"""
+	"""文字列からyyyymd形式の日付を抽出してdatetime化"""
 
 	try:
 		# 8桁または6桁の数字を抽出し、datetime変換できたら日付ありとする
@@ -107,13 +107,17 @@ def get_datetime_by_str(file_name, format='%Y%m%d') -> datetime:
 		return None	# 日付に変換できない数字はここで処理
 
 
-def get_yyyymmdd_by_datetime(time:struct_time):
+def get_yyyymmdd_by_time(time:struct_time):
 	"""西暦年月日の8桁数値を生成"""
 	year = time.tm_year
 	month = time.tm_mon
 	day = time.tm_mday
 	date_str = f"{year:04}{month:02}{day:02}"
 	return date_str
+
+def get_yyyymmdd_by_datetime(time:datetime):
+	"""出力用ymd文字列取得"""
+	return time.strftime("%Y%m%d")
 
 def get_timestamp_str_by_datetime(time:datetime):
 	"""出力用タイムスタンプ文字列取得"""

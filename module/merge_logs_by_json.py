@@ -13,7 +13,7 @@ from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 from module.excel_util import convert_marged_csvs_to_xlsx
 from module.datetime_util import \
 	datetime_by_text, combine_time_str_to_datetime,\
-	is_same_day, get_datetime_by_str, get_yyyymmdd_by_datetime, \
+	is_same_day, get_datetime_by_str, get_yyyymmdd_by_time, \
 	get_timestamp_str_by_datetime
 
 
@@ -87,7 +87,7 @@ def __adjustJson(json_data):
 
 	# 対象日 未指定：本日 とする
 	if not JSON_KEY.target_ymd.value in json_data:
-		json_data[JSON_KEY.target_ymd.value] = get_yyyymmdd_by_datetime(time.localtime())
+		json_data[JSON_KEY.target_ymd.value] = get_yyyymmdd_by_time(time.localtime())
 
 	if not JSON_KEY.go_back_days.value in json_data:
 		json_data[JSON_KEY.go_back_days.value] = DEF_GO_BACK_COUNT

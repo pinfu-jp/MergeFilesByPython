@@ -2,10 +2,11 @@ import os
 import csv
 import openpyxl
 from openpyxl.utils.cell import get_column_letter
-from openpyxl.styles import PatternFill, colors
+from openpyxl.styles import PatternFill
 import win32com.client
 
 from module.logger import write_log
+from module.datetime_util import get_datetime_by_str, get_yyyymmdd_by_datetime
 
 COL_NO_TIMESTAMP = 1
 COL_NO_FILE_NAME = 2
@@ -30,7 +31,8 @@ def convert_marged_csvs_to_xlsx(csv_folder: str, xlsx_file: str):
             reader = csv.reader(f)
             data = [row for row in reader]
 
-        sheet_title = os.path.splitext(os.path.basename(csv_file))[0]
+        timestamp = get_datetime_by_str(os.path.splitext(os.path.basename(csv_file))[0])
+        sheet_title = get_yyyymmdd_by_datetime(timestamp)
         write_log(f"create_sheet :{sheet_title}")
         ws = wb.create_sheet(title=sheet_title)
         
@@ -64,7 +66,7 @@ def get_excel_ver():
     """Excelのバージョン取得"""
     try:
         excel = win32com.client.Dispatch("Excel.Application")
-        ver = excel.Version
+        ver = float(excel.Version)
         excel.Quit()
         write_log(f"get_excel_ver :{ver}")
         return ver
@@ -77,6 +79,7 @@ def run_excel(file_path):
     """Excelを起動し、選択ファイルを開く"""
 
     try:
+        write_log(f"Run Excel path:{file_path}")
         import win32com.client
         excel = win32com.client.Dispatch("Excel.Application")
         excel.Visible = True

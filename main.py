@@ -31,13 +31,13 @@ def main():
 
 		# Excelがあるならxlsxを開く
 		if get_excel_ver() > 0:
-			xlsx_files = [os.path.join(out_folder_path, f) for f in os.listdir(out_folder_path) if f.endswith('.xlsx')]
-			if len(xlsx_files) > 0:
-				run_excel(xlsx_files[0])
-				return
+			xlsx_pathes = [os.path.join(out_folder_path, f) for f in os.listdir(out_folder_path) if f.endswith('.xlsx')]
+			if len(xlsx_pathes) > 0:
+				run_excel(xlsx_pathes[0])
 
-		# フォルダを開く
-		os.startfile(out_folder_path)
+		else:
+			# フォルダを開く
+			os.startfile(out_folder_path)
 
 		write_log("main() end")
 
