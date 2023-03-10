@@ -11,6 +11,7 @@ from enum import Enum
 
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 from module.excel_util import convert_marged_csvs_to_xlsx
+from module.encode import encode_to_utf8
 from module.datetime_util import \
 	datetime_by_text, combine_time_str_to_datetime,\
 	is_same_day, get_datetime_by_str, get_yyyymmdd_by_time, \
@@ -309,57 +310,49 @@ def __parse_log_line(log_line: str,
 
 	# write_log(f"__parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
 
-	# 引数チェック
-	if not log_line or not relative_path:
-		return None
-
-	if file_timestamp:  # ファイル名に日付が付いているケース
-		reg_time = re.compile(TIME_STR_REG_PATTERN)
-		match = reg_time.search(log_line[:max_timestamp_words])
-		if not match:
+	try:
+		# 引数チェック
+		if not log_line or not relative_path:
 			return None
 
-		timestamp = combine_time_str_to_datetime(file_timestamp, match.group())
+		if file_timestamp:  # ファイル名に日付が付いているケース
+			reg_time = re.compile(TIME_STR_REG_PATTERN)
+			match = reg_time.search(log_line[:max_timestamp_words])
+			if not match:
+				return None
 
-	else:  # ファイル名に日付は付いていないケース
-		reg_date_time = re.compile(DATE_STR_REG_PATTERN + " " + TIME_STR_REG_PATTERN)
-		match = reg_date_time.search(log_line[:max_timestamp_words])
-		if not match:
+			timestamp = combine_time_str_to_datetime(file_timestamp, match.group())
+
+		else:  # ファイル名に日付は付いていないケース
+			reg_date_time = re.compile(DATE_STR_REG_PATTERN + " " + TIME_STR_REG_PATTERN)
+			match = reg_date_time.search(log_line[:max_timestamp_words])
+			if not match:
+				return None
+
+			timestamp = datetime_by_text(match.group())
+
+		# 対象日以外は出力しない
+		if not is_same_day(timestamp, target_date):
 			return None
 
-		timestamp = datetime_by_text(match.group())
+		# UTF-8 文字列にする
+		log_string = log_line.replace(match.group(), "").strip()
+		log_string_utf8 = encode_to_utf8(log_string)
 
-	# 対象日以外は出力しない
-	if not is_same_day(timestamp, target_date):
+		# エラーキーワード抽出
+		if grep_keyword:
+			key_word = __grep_keyword(log_string_utf8, grep_keyword)
+
+		# 出力文字数制限
+		if len(log_string_utf8) > max_character_count:
+			log_string_utf8 = log_string_utf8[:max_character_count] + "..."
+
+		# write_log(f"__parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
+		return [timestamp, relative_path, key_word, log_string_utf8]
+
+	except Exception as e:
+		write_log(f"__parse_log_line() log_line:{log_line} exception:{str(e)} so skip", LogLevel.E)
 		return None
-
-	# UTF-8 文字列にする
-	log_string = log_line.replace(match.group(), "").strip()
-	log_string_utf8 = __encode_to_utf8(log_string)
-
-	# エラーキーワード抽出
-	if grep_keyword:
-		key_word = __grep_keyword(log_string_utf8, grep_keyword)
-
-	# 出力文字数制限
-	if len(log_string_utf8) > max_character_count:
-		log_string_utf8 = log_string_utf8[:max_character_count] + "..."
-
-	# write_log(f"__parse_log_line end timestamp: {timestamp}, log_string_utf8: {log_string_utf8[:32]}..., key_word: {key_word}", LogLevel.D)
-	return [timestamp, relative_path, key_word, log_string_utf8]
-
-
-def __encode_to_utf8(some_string):
-	"""文字列をUTF8にエンコード"""
-
-	if isinstance(some_string, bytes):
-		try:
-			decoded_string = some_string.decode('utf-8')
-		except UnicodeDecodeError:
-			decoded_string = some_string.decode('shift_jis')
-		return decoded_string.encode('utf-8')
-
-	return some_string
 
 
 def __grep_keyword(log_string, grep_keyword):
@@ -389,7 +382,6 @@ def __export_out_line_to_csv(out_lines:list, csv_file_path:str):
 	os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
 
 	# csv出力
-	# TODO: SJIS でないとExcelに都合が悪い。デフォはSJISにすること
 	with open(csv_file_path, "w", newline="", encoding='utf-8') as f:
 		writer = csv.writer(f)
 
