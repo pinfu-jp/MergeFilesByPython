@@ -277,7 +277,7 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 											max_character_count, 
 											file_timestamp)
 				if parsed_line:
-					write_log(f"add target line indx:{line_indx} str:{line_str[:32]}... in file:{relative_path}", LogLevel.D)
+					# write_log(f"add target line indx:{line_indx} str:{line_str[:32]}... in file:{relative_path}", LogLevel.D)
 					shared_merge_lines.increment(parsed_line)
 					if target_count == 0:
 						target_count += 1
