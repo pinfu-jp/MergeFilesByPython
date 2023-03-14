@@ -205,7 +205,7 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 		__export_out_line_to_csv(shared_merge_lines.get_merge_lines(), csv_file_path)
 
 	except Exception as e:
-		write_log(f"__merge_one_day_logs_to_csv() 例外発生:{str(e)}", LogLevel.E)
+		write_log(f"__merge_one_day_logs_to_csv() exception:{str(e)}", LogLevel.E)
 
 
 def __get_log_file_path_list(folder_path:str, out_file_symbol:str):
@@ -262,12 +262,14 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 					write_log("not target date file:" + log_file_path)
 					return
 
+			line_indx = 0
 			target_count = 0
 			relative_path = os.path.relpath(log_file_path, log_folder_path)
 
-			for line in f:
+			for line_str in f:
+				line_indx +=1
 				# 行解析
-				parsed_line = __parse_log_line(line,
+				parsed_line = __parse_log_line(line_str,
 											target_date,
 											max_timestamp_words,
 											relative_path, 
@@ -275,16 +277,17 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 											max_character_count, 
 											file_timestamp)
 				if parsed_line:
+					write_log(f"add target line indx:{line_indx} str:{line_str[:32]}... in file:{relative_path}", LogLevel.D)
 					shared_merge_lines.increment(parsed_line)
 					if target_count == 0:
 						target_count += 1
 				else:
 					if target_count > 0:	# 対象日を超えた
-						write_log("over target line :" + line[:32] + "...")
+						write_log(f"over target line indx:{line_indx} str:{line_str[:32]}... in file:{relative_path}", LogLevel.D)
 						break
 
 	except Exception as e:
-		write_log(f"__parse_log_file() 例外発生:{str(e)}", LogLevel.E)
+		write_log(f"__parse_log_file() exception:{str(e)}", LogLevel.E)
 
 
 # タイムスタンプ正規表現
@@ -351,7 +354,7 @@ def __parse_log_line(log_line: str,
 		return [timestamp, relative_path, key_word, log_string_utf8]
 
 	except Exception as e:
-		write_log(f"__parse_log_line() log_line:{log_line} exception:{str(e)} so skip", LogLevel.E)
+		write_log(f"__parse_log_line() skip log_line:{log_line} exception:{str(e)}", LogLevel.E)
 		return None
 
 
