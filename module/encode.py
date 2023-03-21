@@ -1,3 +1,4 @@
+import chardet
 
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 
@@ -7,13 +8,8 @@ def encode_to_utf8(some_string):
 
     try:
         if isinstance(some_string, bytes):
-            try:
-                decoded_string = some_string.decode('utf-8')
-            except UnicodeDecodeError:
-                try:
-                    decoded_string = some_string.decode('shift_jis')
-                except UnicodeDecodeError:
-                    decoded_string = some_string.decode('cp932')
+            detected_encoding = chardet.detect(some_string)['encoding']
+            decoded_string = some_string.decode(detected_encoding)
             return decoded_string.encode('utf-8')
 
         return some_string
