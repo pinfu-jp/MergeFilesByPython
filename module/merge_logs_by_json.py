@@ -57,13 +57,12 @@ def merge_logs_by_json(json_path):
 
 	waited_sec_time = time.time() - start_time
 	out_path = json_data[JSON_KEY.out_folder.value]
-	write_log(f"merge_logs_by_json end  out_folder:{out_path} time: {waited_sec_time:.2f} sec")
-
+	
 	# excelファイルに統合
 	xlsx_path = os.path.join(out_path, f"{json_data[JSON_KEY.out_file_symbol.value]}.xlsx")
 	convert_marged_csvs_to_xlsx(out_path, xlsx_path)
 
-	write_log(f"merge_logs_by_json end")
+	write_log(f"merge_logs_by_json end  out_folder:{out_path} time: {waited_sec_time:.2f} sec")
 
 	return out_path	# 出力先を示す
 
