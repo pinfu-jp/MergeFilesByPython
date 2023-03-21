@@ -4,10 +4,12 @@ import shutil
 import random
 import threading
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
 
 from module.__init__ import APP_NAME
 from module.merge_logs_by_json import merge_logs_by_json
 from module.datetime_util import get_timestamp_str_by_datetime
+from module.hardware_util import get_cpu_core_count
 
 class TestMergeLogs(unittest.TestCase):
 	"""MergeLogs ユニットテスト"""
@@ -35,14 +37,14 @@ class TestMergeLogs(unittest.TestCase):
 		test_log_file = directory + '/' + 'test.log'
 		test2_log_file = directory + '/' + 'test2.log'
 		test3_log_file = directory + '/' + 'test3.log'
-		test4_log_file = directory + '/' + 'test4_20230221.log'
-		test5_log_file = directory + '/' + 'test5_20240221.log'
-		test6_log_file = directory + '/' + 'test6_230222.log'
+		test4_log_file = directory + '/' + 'test4_20230321.log'
+		test5_log_file = directory + '/' + 'test5_20240321.log'
+		test6_log_file = directory + '/' + 'test6_230320.log'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
 			f.write('2023-12-31 14:51:12 ハイフンログ\n')
-			f.write('2023.02.23 14:51:12.100 ドットログ\n')
+			f.write('2023.03.20 14:51:12.100 ドットログ\n')
 			f.write('2022/12/31 14:51:12 log message2\n')
 			f.write('2022/12/31 14:51:11 log message1\n')
 
@@ -50,14 +52,14 @@ class TestMergeLogs(unittest.TestCase):
 			f.write('2021-11-11 14:51:12 test2 ハイフンログ\n')
 			f.write('2022/10/10 09:51:11 test2 log message1\n')
 			f.write('[2022/12/31 14:51:13.21] test2 log message2\n')
-			f.write('2023.2.21 14:51:11 test2 2023.01.11 ドットログ\n')
+			f.write('2023.3.21 14:51:11 test2 2023.01.11 ドットログ\n')
 
 		with open(test3_log_file, 'w') as f:
 			f.write('21-01-11 14:51:12 test3 ハイフンログ\n')
 			f.write('22/01/10 09:51:11 test3 log message1\n')
 			f.write('[22/01/31 14:51:13] test3 log message2\n')
 			f.write('23.02.23 14:51:11.2 test3 2023.01.11 ドットログエラーです\n')
-			f.write('23.2.24 14:51:11 test3 2023.01.11 ドットログあああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ\n')
+			f.write('23.3.20 14:51:11 test3 2023.01.11 ドットログあああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ\n')
 			f.write('23.02.25 14:51:11 test3 2023.01.11 ドットログerror\n')
 
 		with open(test4_log_file, 'w') as f:
@@ -73,7 +75,7 @@ class TestMergeLogs(unittest.TestCase):
 			f.write('9:15:1 test6 log message1\n')
 
 		# 大量データ
-		self.__make_random_logs(directory, 10, 1000)
+		self.__make_random_logs(directory, 50, 1000)
 
 		# サブフォルダ
 		sub_dir = os.path.join(directory, "sublog")
@@ -86,29 +88,16 @@ class TestMergeLogs(unittest.TestCase):
 			f.write('2023/2/24 12:3:5 sub log message1\n')
 
 
-	def __make_random_logs(self, directory, file_count = 20, line_count=2000):
+	def __make_random_logs(self, directory, file_count = 10, line_count=2000):
 		"""ランダムな情報を持つログファイルを複数作成"""
 
 		now = datetime.now()
 
-		threads = []
-		for i in range(file_count):
-
-			# ５日間に複数のログが存在するようにする
-			target_date = now - timedelta(days=(i % 5))
-
-			# ファイル毎にスレッドを分けて実行
-			test_log_file = directory + '/' + f'test_ramdom_{i}.log'
-			thread = threading.Thread(target=self.__make_random_log,
-										args=(	test_log_file,
-												target_date,
-												line_count))
-			threads.append(thread)
-			thread.start()
-
-		# 全スレッドが終了するまでメインスレッドを待機
-		for thread in threads:
-			thread.join()
+		with ThreadPoolExecutor(max_workers=min(file_count, get_cpu_core_count())) as executor:
+			for i in range(file_count):
+				target_date = now - timedelta(days=(i % 5))
+				test_log_file = directory + '/' + f'test_ramdom_{i}.log'
+				executor.submit(self.__make_random_log, test_log_file, target_date, line_count)
 
 
 	def __make_random_log(self, filename, target_date, line_count):

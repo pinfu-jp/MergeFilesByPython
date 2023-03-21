@@ -5,6 +5,7 @@ import json
 import threading
 import time
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Optional
 from enum import Enum
@@ -12,6 +13,7 @@ from enum import Enum
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
 from module.excel_util import convert_marged_csvs_to_xlsx
 from module.encode import encode_to_utf8
+from module.hardware_util import get_cpu_core_count
 from module.datetime_util import \
 	datetime_by_text, combine_time_str_to_datetime,\
 	is_same_day, get_datetime_by_str, get_yyyymmdd_by_time, \
@@ -122,26 +124,20 @@ def __merge_logs_to_csv(log_folder_path:str,
 	csv_folder_path = os.path.abspath(csv_folder_path)
 	target_day = datetime.strptime(str(target_yyyymmdd), '%Y%m%d')
 
-	daily_threads = []
-	for i in range(0, go_back_day_count):
-		# 対象日毎にスレッドを分けて実行
-		target_date = target_day - timedelta(days=i)
-		csv_path = __make_csv_path(csv_folder_path, out_file_symbol, target_date)
-		thread = threading.Thread(target=__merge_one_day_logs_to_csv,
-						 			args=(	log_folder_path,
-											target_date,
-											max_timestamp_words,
-											grep_keyword,
-											max_character_count,
-											out_file_symbol,
-											csv_path))
-		daily_threads.append(thread)
-		thread.start()
-		write_log(f"start thread id:{thread.ident} target date:{target_date.strftime('%Y%m%d')}")
-
-	# 全スレッドが終了するまでメインスレッドを待機
-	for thread in daily_threads:
-		thread.join()
+	with ThreadPoolExecutor(max_workers=min(4, go_back_day_count)) as executor:
+		for i in range(0, go_back_day_count):
+			# 対象日毎にスレッドを分けて実行
+			target_date = target_day - timedelta(days=i)
+			csv_path = __make_csv_path(csv_folder_path, out_file_symbol, target_date)
+			executor.submit(__merge_one_day_logs_to_csv,
+							log_folder_path,
+							target_date,
+							max_timestamp_words,
+							grep_keyword,
+							max_character_count,
+							out_file_symbol,
+							csv_path)
+			write_log(f"start thread target date:{target_date.strftime('%Y%m%d')}")
 
 	write_log("__merge_logs_to_csv() end")
 
@@ -178,28 +174,23 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 	try:
 		write_log(f"__merge_one_day_logs_to_csv() start target_date:{str(target_date)}")
 
-		file_threads = []
 		shared_merge_lines = SharedMergeLines() # スレッド間共有 出力行配列
 
 		file_path_list = __get_log_file_path_list(log_folder_path, out_file_symbol)
-		for file_path in file_path_list:
 
-			# 対象ファイル毎にスレッドを分けて実行
-			thread = threading.Thread(target=__parse_log_file,
-										args=(	shared_merge_lines,
-												file_path,
-												log_folder_path,
-												target_date,
-												max_timestamp_words,
-												grep_keyword,
-												max_character_count))
-			file_threads.append(thread)
-			thread.start()
-			write_log(f"start thread id:{thread.ident} target file:{file_path}")
 
-		# 全スレッドが終了するまでメインスレッドを待機
-		for thread in file_threads:
-			thread.join()
+
+		with ThreadPoolExecutor(max_workers=min(get_cpu_core_count(), len(file_path_list))) as executor:
+			for file_path in file_path_list:
+				executor.submit(__parse_log_file,
+									shared_merge_lines,
+									file_path,
+									log_folder_path,
+									target_date,
+									max_timestamp_words,
+									grep_keyword,
+									max_character_count)
+				write_log(f"start thread target file:{file_path}")
 
 		# csv出力
 		__export_out_line_to_csv(shared_merge_lines.get_merge_lines(), csv_file_path)

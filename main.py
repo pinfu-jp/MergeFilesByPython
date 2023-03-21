@@ -36,7 +36,7 @@ def main():
 				run_excel(xlsx_pathes[0])
 
 		else:
-			# フォルダを開く
+			write_log(f"Open folder as explorer :{out_folder_path}")
 			os.startfile(out_folder_path)
 
 		write_log("main() end")
