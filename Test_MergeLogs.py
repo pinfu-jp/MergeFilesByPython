@@ -37,9 +37,9 @@ class TestMergeLogs(unittest.TestCase):
 		test_log_file = directory + '/' + 'test.log'
 		test2_log_file = directory + '/' + 'test2.log'
 		test3_log_file = directory + '/' + 'test3.log'
-		test4_log_file = directory + '/' + 'test4_20230321.log'
+		test4_log_file = directory + '/' + 'test4_20230609.log'
 		test5_log_file = directory + '/' + 'test5_20240321.log'
-		test6_log_file = directory + '/' + 'test6_230320.log'
+		test6_log_file = directory + '/' + 'test6_230610.log'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
@@ -49,10 +49,13 @@ class TestMergeLogs(unittest.TestCase):
 			f.write('2022/12/31 14:51:11 log message1\n')
 
 		with open(test2_log_file, 'w') as f:
-			f.write('2021-11-11 14:51:12 test2 ハイフンログ\n')
-			f.write('2022/10/10 09:51:11 test2 log message1\n')
-			f.write('[2022/12/31 14:51:13.21] test2 log message2\n')
-			f.write('2023.3.21 14:51:11 test2 2023.01.11 ドットログ\n')
+			f.write('2022-6-7 14:51:12 test2 ハイフンログ\n')
+			f.write('2023/6/7 09:51:11 test2 log message1\n')
+			f.write('[2023/6/08 14:51:13.21] test2 log message2\n')
+			f.write('2023.6.9 14:51:11 test2 2023.01.11 ドットログ\n')
+			f.write('[2023/06/10 14:51:13-345] test2 ハイフンミリ秒345\n')
+			f.write('[2023/06/10 14:51:13-3] test2 ハイフンミリ秒300\n')
+			f.write('[2023/06/10 14:51:13-4] test2 ハイフンミリ秒400\n')
 
 		with open(test3_log_file, 'w') as f:
 			f.write('21-01-11 14:51:12 test3 ハイフンログ\n')

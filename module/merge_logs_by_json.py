@@ -290,7 +290,8 @@ DATE_STR_REG_PATTERN = "(" + DATE_Y4_STR_RG_PATTERN + "|" + DATE_Y2_STR_REG_PATT
 # 日付と時刻の間は半角スペース
 
 # 時刻文字列の正規表現：hh:mm:ss に対応 ミリ秒に対応
-TIME_STR_REG_PATTERN = r'\d{1,2}:\d{1,2}:\d{1,2}(?:.\d{1,3})?'
+TIME_STR_REG_PATTERN = r'\d{1,2}:\d{1,2}:\d{1,2}(?:[-.]?\d{1,3})?'
+
 
 def __parse_log_line(log_line: str,
 					 target_date:datetime,
