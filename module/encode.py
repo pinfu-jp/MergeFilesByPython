@@ -16,5 +16,5 @@ def encode_to_utf8(some_string):
 
     except Exception as e:
         # エンコードできない場合は元の文字列のままとする
-        write_log("__encode_to_utf8 exception :" + str(e), LogLevel.E)
+        write_log("__encode_to_utf8 exception :" + str(e) + " string:" + some_string, LogLevel.E)
         return some_string
