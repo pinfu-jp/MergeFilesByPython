@@ -26,6 +26,8 @@ def convert_marged_csvs_to_xlsx(csv_folder: str, xlsx_file: str):
     # XLSXファイルを作成し、すべてのCSVファイルの内容を書き込む
     wb = openpyxl.Workbook()
 
+    caution_color = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
+
     for csv_path in csv_pathes:
         with open(csv_path, 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
@@ -33,11 +35,10 @@ def convert_marged_csvs_to_xlsx(csv_folder: str, xlsx_file: str):
 
         timestamp = get_datetime_by_str(os.path.splitext(os.path.basename(csv_path))[0])
         sheet_title = get_yyyymmdd_by_datetime(timestamp)
+
         write_log(f"create_sheet :{sheet_title}")
         ws = wb.create_sheet(title=sheet_title)
         
-        yellow_color = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
-
         # 行
         for row_no, row in enumerate(data, start=1):
             # 列
@@ -47,15 +48,16 @@ def convert_marged_csvs_to_xlsx(csv_folder: str, xlsx_file: str):
 
                 if row_no > 1 and col_no == COL_NO_KEYWORD:
                     if len(cell_value) > 0:
-                        cell.fill = yellow_color    # キーワードは強調する
+                        cell.fill = caution_color    # キーワードは注意色にする
 
         # カラム幅を調整
+        # どのシートも同じ幅としたいので、固定値です
         ws.column_dimensions[get_column_letter(COL_NO_TIMESTAMP)].width = 26
         ws.column_dimensions[get_column_letter(COL_NO_FILE_NAME)].width = 64
         ws.column_dimensions[get_column_letter(COL_NO_KEYWORD)].width = 12
 
     if wb['Sheet']:
-        wb.remove(wb['Sheet']) # sheetは不要なので削除
+        wb.remove(wb['Sheet']) # 初期登録されている"sheet"は不要なので削除
     
     # ファイルを保存
     wb.save(xlsx_file)

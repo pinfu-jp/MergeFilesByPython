@@ -30,15 +30,21 @@ def datetime_by_text(timestamp_str:str) -> datetime:
 		write_log("datetime_by_text error:" + str(e), LogLevel.E)
 		return None
 
-
-def combine_time_str_to_datetime(datetime, time_str) -> datetime:
+def combine_dd_time_str_to_datetime(datetime: datetime, dd_time_str :str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""
 
 	try:
 		time_length = 6
 
 		# 区切り文字を全て取り除く
-		timestamp_str = time_str.replace(':', '').replace('.', '')
+		ddtimestamp_str = dd_time_str.replace(' ', '').replace(':', '').replace('.', '').replace('-', '')
+
+		# 先頭2文字が日
+		dd_str = ddtimestamp_str[:2]
+		datetime = datetime.replace(day=int(dd_str))
+
+		# それ以降が時刻
+		timestamp_str = ddtimestamp_str[2:]
 
 		# datetime型に変換
 		tm = datetime.strptime(timestamp_str[:time_length], '%H%M%S').time()
@@ -50,7 +56,29 @@ def combine_time_str_to_datetime(datetime, time_str) -> datetime:
 		return timestamp
 
 	except ValueError as e:
-		write_log("combine_time_str_to_datetime error:" + str(e), LogLevel.E)
+		write_log("combine_time_str_to_datetime error:" + str(e) + " datetime:" + datetime + " time_str:" + dd_time_str, LogLevel.E)
+		return None
+
+def combine_time_str_to_datetime(datetime: datetime, time_str :str) -> datetime:
+	"""タイムスタンプ文字列を datetime 型に変換"""
+
+	try:
+		time_length = 6
+
+		# 区切り文字を全て取り除く
+		timestamp_str = time_str.replace(':', '').replace('.', '').replace('-', '')
+
+		# datetime型に変換
+		tm = datetime.strptime(timestamp_str[:time_length], '%H%M%S').time()
+		timestamp = datetime.combine(datetime, tm)
+
+		# ミリ秒を加算
+		timestamp = add_milli_sec_ifneed(timestamp, timestamp_str, time_length)
+
+		return timestamp
+
+	except ValueError as e:
+		write_log("combine_time_str_to_datetime error:" + str(e) + " datetime:" + datetime + " time_str:" + time_str, LogLevel.E)
 		return None
 
 
@@ -67,27 +95,23 @@ def add_milli_sec_ifneed(datetime:datetime, timestamp_str, milli_sec_pos) -> dat
 
 	return datetime
 
+def is_same_year_month(timestamp: datetime, target_date: datetime) -> bool:
+    """同じ年月か判定"""
+    if not isinstance(timestamp, datetime) or not isinstance(target_date, datetime):
+        return False
 
-def is_same_day(timestamp, target_date:datetime):
-	"""同じ日付か判定"""
+    return timestamp.year == target_date.year and timestamp.month == target_date.month
 
-	if timestamp is None or not isinstance(timestamp, datetime):
-		return False
+def is_same_day(timestamp: datetime, target_date: datetime) -> bool:
+    """同じ日付か判定。この関数は is_same_year_month に依存している"""
+    if not is_same_year_month(timestamp, target_date):
+        return False
 
-	if (timestamp.year != target_date.year):
-		return False
-
-	if (timestamp.month != target_date.month):
-		return False
-
-	if (timestamp.day != target_date.day):
-		return False
-
-	return True
+    return timestamp.day == target_date.day
 
 
 def get_datetime_by_str(file_name, format='%Y%m%d') -> datetime:
-	"""文字列からyyyymd形式の日付を抽出してdatetime化"""
+	"""文字列からyyyymd形式の日付を抽出してdatetime化 日がない場合は1日とする"""
 
 	try:
 		# 8桁または6桁の数字を抽出し、datetime変換できたら日付ありとする
@@ -98,12 +122,15 @@ def get_datetime_by_str(file_name, format='%Y%m%d') -> datetime:
 		date_str = match.group()
 		if len(date_str) == 6:
 			# 6桁の日付文字列を8桁に変換する
-			date_str = '20' + date_str
+			if date_str[:2] == '20':	# 20yymm のケースなので、dd を足す
+				date_str = date_str + '01'
+			else:	# それ以外は、yymmdd とみなし、西暦2000 を加算。2100年まで有効な判定
+				date_str = '20' + date_str
 
 		return datetime.strptime(date_str, format)
 
 	except ValueError as e:
-		write_log(f"get_datetime_by_str() 例外:{str(e)}", LogLevel.W)
+		write_log(f"get_datetime_by_str() 例外:{str(e)} file_name:" + file_name + " format:" + format , LogLevel.W)
 		return None	# 日付に変換できない数字はここで処理
 
 

@@ -15,8 +15,8 @@ from module.excel_util import convert_marged_csvs_to_xlsx
 from module.encode import encode_to_utf8
 from module.hardware_util import get_cpu_core_count
 from module.datetime_util import \
-	datetime_by_text, combine_time_str_to_datetime,\
-	is_same_day, get_datetime_by_str, get_yyyymmdd_by_time, \
+	datetime_by_text, combine_dd_time_str_to_datetime, combine_time_str_to_datetime,\
+	is_same_year_month, is_same_day, get_datetime_by_str, get_yyyymmdd_by_time, \
 	get_timestamp_str_by_datetime
 
 
@@ -54,13 +54,13 @@ def merge_logs_by_json(json_path):
 		json_data[JSON_KEY.out_file_symbol.value],
 		json_data[JSON_KEY.max_timestamp_words.value],
 		)
-
-	waited_sec_time = time.time() - start_time
-	out_path = json_data[JSON_KEY.out_folder.value]
 	
 	# excelファイルに統合
+	out_path = json_data[JSON_KEY.out_folder.value]
 	xlsx_path = os.path.join(out_path, f"{json_data[JSON_KEY.out_file_symbol.value]}.xlsx")
 	convert_marged_csvs_to_xlsx(out_path, xlsx_path)
+
+	waited_sec_time = time.time() - start_time
 
 	write_log(f"merge_logs_by_json end  out_folder:{out_path} time: {waited_sec_time:.2f} sec")
 
@@ -177,8 +177,6 @@ def __merge_one_day_logs_to_csv(log_folder_path:str,
 
 		file_path_list = __get_log_file_path_list(log_folder_path, out_file_symbol)
 
-
-
 		with ThreadPoolExecutor(max_workers=min(get_cpu_core_count(), len(file_path_list))) as executor:
 			for file_path in file_path_list:
 				executor.submit(__parse_log_file,
@@ -248,7 +246,15 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 			# ファイル名で対象外が判明している場合は処理しない
 			file_timestamp = get_datetime_by_str(os.path.basename(log_file_path))
 			if file_timestamp :
-				if is_same_day(file_timestamp, target_date) == False:
+
+				# 年月が対象外はスキップ
+				if is_same_year_month(file_timestamp, target_date) == False:
+					write_log("not target date file:" + log_file_path)
+					return
+				
+				# 日付が対象外かつ、1日付け以外はスキップ
+				# 1日付けは仮日付の可能性があるので処理する必要あり
+				if is_same_day(file_timestamp, target_date) == False and file_timestamp.day != 1:
 					write_log("not target date file:" + log_file_path)
 					return
 
@@ -283,14 +289,19 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 # タイムスタンプ正規表現
 
 # 日付文字列の正規表現  西暦4桁,2桁に対応　区切文字：- . / に対応
-DATE_Y4_STR_RG_PATTERN = r'\d{4}[-./]\d{1,2}[-./]\d{1,2}'
-DATE_Y2_STR_REG_PATTERN = r'\d{2}[-./]\d{1,2}[-./]\d{1,2}'
-DATE_STR_REG_PATTERN = "(" + DATE_Y4_STR_RG_PATTERN + "|" + DATE_Y2_STR_REG_PATTERN + ")"
+DATE_Y4_STR_REG_PATTERN = r'\d{4}[-./]\d{1,2}[-./]?\d{1,2}?'
+DATE_Y2_STR_REG_PATTERN = r'\d{2}[-./]\d{1,2}[-./]?\d{1,2}?'
+DATE_Y4_MONTH_PATTERN = r'\d{4}-\d{1,2}'
+DATE_Y2_MONTH_PATTERN = r'\d{2}-\d{1,2}'
+DATE_STR_REG_PATTERN = "(" + "|".join([DATE_Y4_STR_REG_PATTERN, DATE_Y2_STR_REG_PATTERN, DATE_Y4_MONTH_PATTERN, DATE_Y2_MONTH_PATTERN]) + ")"
 
 # 日付と時刻の間は半角スペース
 
 # 時刻文字列の正規表現：hh:mm:ss に対応 ミリ秒に対応
 TIME_STR_REG_PATTERN = r'\d{1,2}:\d{1,2}:\d{1,2}(?:[-.]?\d{1,3})?'
+
+# 日＆時刻文字列の正規表現：DD hh:mm:ss に対応 ミリ秒に対応
+DD_TIME_STR_REG_PATTERN = r'(\d{1,2}) \d{1,2}:\d{1,2}:\d{1,2}(?:[-.]?\d{1,3})?'
 
 
 def __parse_log_line(log_line: str,
@@ -309,21 +320,27 @@ def __parse_log_line(log_line: str,
 		if not log_line or not relative_path:
 			return None
 
-		if file_timestamp:  # ファイル名に日付が付いているケース
-			reg_time = re.compile(TIME_STR_REG_PATTERN)
-			match = reg_time.search(log_line[:max_timestamp_words])
-			if not match:
-				return None
+		timestamp = None
 
-			timestamp = combine_time_str_to_datetime(file_timestamp, match.group())
+		if file_timestamp:  # ファイル名に日付が付いているケース
+
+			# 日+時刻 を結合
+			reg_dd_time = re.compile(DD_TIME_STR_REG_PATTERN)
+			match = reg_dd_time.search(log_line[:max_timestamp_words])
+			if match:
+				timestamp = combine_dd_time_str_to_datetime(file_timestamp, match.group())
+			else:
+				# 時刻 を結合
+				reg_time = re.compile(TIME_STR_REG_PATTERN)
+				match = reg_time.search(log_line[:max_timestamp_words])
+				if match:
+					timestamp = combine_time_str_to_datetime(file_timestamp, match.group())
 
 		else:  # ファイル名に日付は付いていないケース
 			reg_date_time = re.compile(DATE_STR_REG_PATTERN + " " + TIME_STR_REG_PATTERN)
 			match = reg_date_time.search(log_line[:max_timestamp_words])
-			if not match:
-				return None
-
-			timestamp = datetime_by_text(match.group())
+			if match:
+				timestamp = datetime_by_text(match.group())
 
 		# 対象日以外は出力しない
 		if not is_same_day(timestamp, target_date):

@@ -37,45 +37,58 @@ class TestMergeLogs(unittest.TestCase):
 		test_log_file = directory + '/' + 'test.log'
 		test2_log_file = directory + '/' + 'test2.log'
 		test3_log_file = directory + '/' + 'test3.log'
-		test4_log_file = directory + '/' + 'test4_20230609.log'
-		test5_log_file = directory + '/' + 'test5_20240321.log'
-		test6_log_file = directory + '/' + 'test6_230610.log'
+		test_yyyymmdd_log_file = directory + '/' + 'test4_20240301.log'
+		test_yyyymmdd_over_log_file = directory + '/' + 'test5_20240229.log'
+		test_yymmdd_log_file = directory + '/' + 'test6_240301.log'
+		test_yymm_log_file = directory + '/' + 'test7_2403.log'
+		test_yyyymm_log_file = directory + '/' + 'test8_202403.log'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
-			f.write('2023-12-31 14:51:12 ハイフンログ\n')
-			f.write('2023.03.20 14:51:12.100 ドットログ\n')
-			f.write('2022/12/31 14:51:12 log message2\n')
-			f.write('2022/12/31 14:51:11 log message1\n')
+			f.write('2024-03-01 14:51:12 ハイフンログ\n')
+			f.write('2024.03.01 14:51:12.100 ドットログ\n')
+			f.write('2024/03/01 14:51:12 log message2\n')
+			f.write('2024/03/01 14:51:11 log message1\n')
 
 		with open(test2_log_file, 'w') as f:
-			f.write('2022-6-7 14:51:12 test2 ハイフンログ\n')
-			f.write('2023/6/7 09:51:11 test2 log message1\n')
-			f.write('[2023/6/08 14:51:13.21] test2 log message2\n')
-			f.write('2023.6.9 14:51:11 test2 2023.01.11 ドットログ\n')
-			f.write('[2023/06/10 14:51:13-345] test2 ハイフンミリ秒345\n')
-			f.write('[2023/06/10 14:51:13-3] test2 ハイフンミリ秒300\n')
-			f.write('[2023/06/10 14:51:13-4] test2 ハイフンミリ秒400\n')
+			f.write('2024-3-1 14:51:12 test2 月日1桁\n')
+			f.write('2024-3-01 14:51:12 test2 月１桁\n')
+			f.write('2024-03-1 14:51:12 test2 日１桁\n')
+			f.write('2024/03/1 09:51:11 test2 log message1\n')
+			f.write('[2023/03/01 14:51:13.21] test2 log 鍵かっこ\n')
+			f.write('2023.3.1 14:51:11 test2 2023.01.11 ドット１桁\n')
+			f.write('[2023/03/01 14:51:13-345] test2 ハイフンミリ秒345\n')
+			f.write('[2023/3/1 14:51:13-3] test2 ハイフンミリ秒300\n')
+			f.write('[2023/3/01 14:51:13-4] test2 ハイフンミリ秒400\n')
 
 		with open(test3_log_file, 'w') as f:
-			f.write('21-01-11 14:51:12 test3 ハイフンログ\n')
-			f.write('22/01/10 09:51:11 test3 log message1\n')
-			f.write('[22/01/31 14:51:13] test3 log message2\n')
-			f.write('23.02.23 14:51:11.2 test3 2023.01.11 ドットログエラーです\n')
-			f.write('23.3.20 14:51:11 test3 2023.01.11 ドットログあああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ\n')
-			f.write('23.02.25 14:51:11 test3 2023.01.11 ドットログerror\n')
+			f.write('24-03-01 14:51:12 test3 ハイフンログ 2桁年\n')
+			f.write('24/03/01 09:51:11 test3 log message1 2桁年\n')
+			f.write('[24/03/01 14:51:13] test3 log message2 鍵かっこ 2桁年\n')
+			f.write('23.03.01 14:51:11.2 test3 2023.01.11 ドットログエラーです\n')
+			f.write('24.03.01 14:51:11 test3 2023.01.11 ドットログあああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ\n')
+			f.write('23.03.01 14:51:11 test3 2024.02.29 ドットログerror\n')
 
-		with open(test4_log_file, 'w') as f:
+		with open(test_yyyymmdd_log_file, 'w') as f:
 			f.write('21:51:12 test4 exception null pointer\n')
 			f.write('22:51:11.800 test4 log message1\n')
 
-		with open(test5_log_file, 'w') as f:
+		with open(test_yyyymmdd_over_log_file, 'w') as f:
 			f.write('21:51:12 test5 ハイフンログ\n')
 			f.write('22:51:11 test5 log message1\n')
 
-		with open(test6_log_file, 'w') as f:
+		with open(test_yymmdd_log_file, 'w') as f:
 			f.write('09:11:12.123 test6 ハイフンログ\n')
 			f.write('9:15:1 test6 log message1\n')
+
+		with open(test_yyyymm_log_file, 'w') as f:
+			f.write('01 09:11:12.123 ファイル名がyyyymm 日以降がデータ\n')
+			f.write('1 9:15:1 test6 ファイル名がyyyymm 日以降がデータ ゼロなし\n')
+
+		with open(test_yymm_log_file, 'w') as f:
+			f.write('01 09:11:12.123 ファイル名がyymm 日以降がデータは対象外\n')
+			f.write('1 9:15:1 test6 ファイル名がyymm 日以降がデータ ゼロなし は対象外\n')
+			f.write(' 1 9:15:1 test6 ファイル名がyymm 日以降がデータ ゼロなし は対象外\n')
 
 		# 大量データ
 		self.__make_random_logs(directory, 50, 1000)
@@ -94,7 +107,8 @@ class TestMergeLogs(unittest.TestCase):
 	def __make_random_logs(self, directory, file_count = 10, line_count=2000):
 		"""ランダムな情報を持つログファイルを複数作成"""
 
-		now = datetime.now()
+		# now = datetime.now()
+		now = datetime(year=2024, month=3, day=1)
 
 		with ThreadPoolExecutor(max_workers=min(file_count, get_cpu_core_count())) as executor:
 			for i in range(file_count):
