@@ -30,6 +30,7 @@ def datetime_by_text(timestamp_str:str) -> datetime:
 		write_log("datetime_by_text error:" + str(e), LogLevel.E)
 		return None
 
+
 def combine_dd_time_str_to_datetime(datetime: datetime, dd_time_str :str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""
 
@@ -58,6 +59,7 @@ def combine_dd_time_str_to_datetime(datetime: datetime, dd_time_str :str) -> dat
 	except ValueError as e:
 		write_log("combine_time_str_to_datetime error:" + str(e) + " datetime:" + datetime + " time_str:" + dd_time_str, LogLevel.E)
 		return None
+
 
 def combine_time_str_to_datetime(datetime: datetime, time_str :str) -> datetime:
 	"""タイムスタンプ文字列を datetime 型に変換"""

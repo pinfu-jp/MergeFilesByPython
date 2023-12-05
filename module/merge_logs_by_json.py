@@ -258,6 +258,10 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 					write_log("not target date file:" + log_file_path)
 					return
 
+			# プロパティの日付をとっておく
+			# レコードに時刻しかない場合にプロパティの日付と結合する
+			modification_datetime = datetime.fromtimestamp(os.path.getmtime(log_file_path))
+
 			line_indx = 0
 			target_count = 0
 			relative_path = os.path.relpath(log_file_path, log_folder_path)
@@ -271,7 +275,8 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 											relative_path, 
 											grep_keyword, 
 											max_character_count, 
-											file_timestamp)
+											file_timestamp,
+											modification_datetime)
 				if parsed_line:
 					# write_log(f"add target line indx:{line_indx} str:{line_str[:32]}... in file:{relative_path}", LogLevel.D)
 					shared_merge_lines.increment(parsed_line)
@@ -310,7 +315,8 @@ def __parse_log_line(log_line: str,
 					 relative_path: str,
 					 grep_keyword:str, 
 					 max_character_count:int,
-					 file_timestamp: Optional[datetime]):
+					 file_timestamp: Optional[datetime],
+					 modification_datetime : Optional[datetime]):
 	"""ログ１行を解析　タイムスタンプとログ文字列とキーワードを分離し、リストに格納"""
 
 	# write_log(f"__parse_log_line start log_line: {log_line[:32]}...", LogLevel.D)
@@ -341,6 +347,13 @@ def __parse_log_line(log_line: str,
 			match = reg_date_time.search(log_line[:max_timestamp_words])
 			if match:
 				timestamp = datetime_by_text(match.group())
+			else:
+				# 時刻のみ取得し、プロパティ日付と結合する
+				reg_time = re.compile(TIME_STR_REG_PATTERN)
+				match = reg_time.search(log_line[:max_timestamp_words])
+				if match:
+					timestamp = combine_time_str_to_datetime(modification_datetime, match.group())
+
 
 		# 対象日以外は出力しない
 		if not is_same_day(timestamp, target_date):

@@ -42,6 +42,7 @@ class TestMergeLogs(unittest.TestCase):
 		test_yymmdd_log_file = directory + '/' + 'test6_240301.log'
 		test_yymm_log_file = directory + '/' + 'test7_2403.log'
 		test_yyyymm_log_file = directory + '/' + 'test8_202403.log'
+		test_property_log_file = directory + '/' + 'test9_property.log'
 
         # テスト用のダミーログファイルを作成
 		with open(test_log_file, 'w') as f:
@@ -89,6 +90,9 @@ class TestMergeLogs(unittest.TestCase):
 			f.write('01 09:11:12.123 ファイル名がyymm 日以降がデータは対象外\n')
 			f.write('1 9:15:1 test6 ファイル名がyymm 日以降がデータ ゼロなし は対象外\n')
 			f.write(' 1 9:15:1 test6 ファイル名がyymm 日以降がデータ ゼロなし は対象外\n')
+
+		with open(test_property_log_file, 'w') as f:
+			f.write('09:11:12.123 ファイルプロパティ テスト ファイル名に時刻はなく、データに日付がない\n')
 
 		# 大量データ
 		self.__make_random_logs(directory, 50, 1000)
