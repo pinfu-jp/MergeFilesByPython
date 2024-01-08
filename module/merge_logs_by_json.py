@@ -11,7 +11,7 @@ from typing import Optional
 from enum import Enum
 
 from module.logger import write_log, LogLevel, DEBUG_LOG_PATH
-from module.excel_util import convert_marged_csvs_to_xlsx
+from module.excel_util import convert_marged_csvs_to_xlsx, remove_formulas
 from module.encode import encode_to_utf8
 from module.hardware_util import get_cpu_core_count
 from module.datetime_util import \
@@ -363,11 +363,11 @@ def __parse_log_line(log_line: str,
 
 		# UTF-8 文字列にする
 		log_string = log_line.replace(match.group(), "").strip()
-		log_string_utf8 = encode_to_utf8(log_string)
+		log_string_utf8 = encode_to_utf8(remove_formulas(log_string))
 
 		# エラーキーワード抽出
 		if grep_keyword:
-			key_word = __grep_keyword(log_string_utf8, grep_keyword)
+			key_word = __grep_keyword(log_string_utf8, remove_formulas(grep_keyword))
 
 		# 出力文字数制限
 		if len(log_string_utf8) > max_character_count:
