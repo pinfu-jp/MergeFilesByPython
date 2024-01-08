@@ -283,9 +283,11 @@ def __parse_log_file(shared_merge_lines: SharedMergeLines,
 					if target_count == 0:
 						target_count += 1
 				else:
-					if target_count > 0:	# 対象日を超えた
-						write_log(f"over target line indx:{line_indx} str:{line_str[:32]}... in file:{relative_path}", LogLevel.D)
-						break
+					# 解析できない行があるので、その場合は次行の解析に進める
+					continue
+					# if target_count > 0:	# 対象日を超えた
+					# 	write_log(f"over target line indx:{line_indx} str:{line_str[:32]}... in file:{relative_path}", LogLevel.D)
+					# 	break
 
 	except Exception as e:
 		write_log(f"__parse_log_file() exception:{str(e)}", LogLevel.E)
