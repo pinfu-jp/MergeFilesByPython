@@ -80,7 +80,7 @@ class TestMergeLogs(unittest.TestCase):
 
 		with open(test_yymmdd_log_file, 'w') as f:
 			f.write('09:11:12.123 test6 ハイフンログ\n')
-			f.write('9:15:1 test6 log message1\n')
+			f.write('9:15:1 test6 log message1 err\n')
 
 		with open(test_yyyymm_log_file, 'w') as f:
 			f.write('01 09:11:12.123 ファイル名がyyyymm 日以降がデータ\n')
@@ -88,7 +88,7 @@ class TestMergeLogs(unittest.TestCase):
 
 		with open(test_yymm_log_file, 'w') as f:
 			f.write('01 09:11:12.123 ファイル名がyymm 日以降がデータは対象外\n')
-			f.write('1 9:15:1 test6 ファイル名がyymm 日以降がデータ ゼロなし は対象外\n')
+			f.write('1 9:15:1 test6 ファイル名がyymm 日以降がデータ ゼロなし は対象外 err\n')
 			f.write(' 1 9:15:1 test6 ファイル名がyymm 日以降がデータ ゼロなし は対象外\n')
 
 		with open(test_property_log_file, 'w') as f:

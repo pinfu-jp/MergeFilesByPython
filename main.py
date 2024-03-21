@@ -14,13 +14,19 @@ def main():
 	try:
 		write_log("main() start")
 
-		if len(sys.argv) > 1:
-			write_log("main param arg1:" + sys.argv[1])
-			json_path = os.path.abspath(sys.argv[1])
+		# カレントに同名jsonがあればそれを自動的に参照する
+		json_path = get_current_json_path()
+		if json_path:
+			write_log(f"get json path:{json_path}")
 		else:
-			# ユーザーにフォルダを選択してもらう
-			write_log("no parameter to select by user")
-			json_path = select_json_file()
+			write_log(f"not current json")
+			if len(sys.argv) > 1:
+				write_log("main param arg1:" + sys.argv[1])
+				json_path = os.path.abspath(sys.argv[1])
+			else:
+				# ユーザーに設定ファイルを選択してもらう
+				write_log("no parameter to select by user")
+				json_path = select_json_file()
 		
 		if not os.path.exists(json_path):
 			show_message(f"JSONファイルが見つからないので終了します {json_path}")		
@@ -45,6 +51,21 @@ def main():
 		write_log("main catch exception :" + str(e), LogLevel.E)
 		show_message("エラーが発生しました。ログで原因を確認してください")		
   
-		
+def get_current_json_path():
+    # モジュールのフルパスを取得
+    module_path = os.path.abspath(__file__)
+    # モジュール名のみ（拡張子なし）を取得
+    module_name = os.path.splitext(os.path.basename(module_path))[0]
+    # 同じ名前のJSONファイル名を作成
+    json_file_name = module_name + ".json"
+    # カレントディレクトリのファイル一覧を取得
+    files_in_directory = os.listdir('.')
+    # JSONファイルが存在するかチェックし、あればそのパスを返す
+    if json_file_name in files_in_directory:
+        return os.path.join(os.getcwd(), json_file_name)
+    # ファイルが存在しない場合はNoneを返す
+    return None
+
+
 if __name__ == "__main__":
     main()
